@@ -1,0 +1,22 @@
+# Default watchlist for data pipeline demos
+symbols:
+  - SPY
+  - AAPL
+  - MSFT
+  - GOOGL
+  - AMZN
+  - META
+  - NVDA
+  - JPM
+  - KO
+  - PEP
+
+start_date: "2020-01-01"
+end_date: null  # null = today
+
+data_dir: "data/parquet"
+metadata_db: "data/metadata.sqlite"
+
+fetch:
+  max_retries: 3
+  retry_delay_seconds: 2

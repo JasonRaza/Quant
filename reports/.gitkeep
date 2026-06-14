@@ -1,0 +1,2 @@
+# Sample backtest results (dual-MA 20/50 on SPY, synthetic data)
+# Regenerate: quant-backtest --strategy dual_ma --symbol SPY

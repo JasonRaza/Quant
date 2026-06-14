@@ -1,0 +1,16 @@
+{
+  "strategy": "dual_ma",
+  "symbol": "SPY",
+  "metrics": {
+    "total_return": 0.1239,
+    "sharpe": 0.6608,
+    "max_drawdown": -0.0145,
+    "win_rate": 0.5441,
+    "turnover": 100300.3,
+    "final_equity": 112391.79,
+    "benchmark_total_return": 0.1582,
+    "benchmark_sharpe": 0.7818,
+    "benchmark_max_drawdown": -0.0128
+  },
+  "trade_count": 5
+}
