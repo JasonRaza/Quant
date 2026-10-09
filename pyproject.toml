@@ -5,9 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "quant-portfolio"
 version = "0.1.0"
-description = "Python quant finance portfolio: data pipeline, backtester, factors, portfolio optimization, ML alpha, paper trading"
+description = "Learning project: a small quant research stack, from market data to backtests, factors, portfolio optimization, ML and paper trading"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "JasonRaza" }]
+keywords = ["quantitative-finance", "backtesting", "portfolio-optimization", "machine-learning", "streamlit"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
 dependencies = [
     "pandas>=2.0",
     "numpy>=1.24",
@@ -43,10 +51,14 @@ dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "ruff>=0.1",
+    "pre-commit>=3.0",
 ]
 all = [
     "quant-portfolio[backtest,factors,portfolio,ml,paper,dev]",
 ]
+
+[project.urls]
+Repository = "https://github.com/JasonRaza/Quant"
 
 [project.scripts]
 quant-fetch = "data_pipeline.cli:main"

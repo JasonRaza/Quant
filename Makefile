@@ -1,10 +1,15 @@
-.PHONY: install test fetch backtest factors optimize ml dashboard api seed quality lint
+.PHONY: install test coverage check fetch backtest factors optimize ml dashboard api seed quality lint
 
 install:
 	pip install -e ".[all]"
 
 test:
 	pytest -v
+
+coverage:
+	pytest -q --cov --cov-report=term --cov-report=html
+
+check: lint test
 
 seed:
 	python scripts/seed_sample_data.py
