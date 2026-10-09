@@ -1,7 +1,7 @@
-.PHONY: install test fetch backtest factors optimize seed quality lint
+.PHONY: install test fetch backtest factors optimize dashboard api seed quality lint
 
 install:
-	pip install -e ".[backtest,portfolio,dev]"
+	pip install -e ".[paper,dev]"
 
 test:
 	pytest -v
@@ -20,6 +20,12 @@ factors:
 
 optimize:
 	quant-optimize --config config/watchlist.yaml --exclude SPY
+
+dashboard:
+	quant-dashboard
+
+api:
+	quant-paper-api
 
 quality:
 	quant-quality --config config/watchlist.yaml

@@ -32,12 +32,14 @@ ml = [
     "lightgbm>=4.0",
 ]
 paper = [
+    "quant-portfolio[backtest,portfolio]",
     "fastapi>=0.109",
     "uvicorn>=0.27",
-    "streamlit>=1.30",
+    "streamlit>=1.40",
 ]
 dev = [
     "scikit-learn>=1.3",  # reference implementation checked in tests
+    "httpx>=0.27",  # FastAPI TestClient
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "ruff>=0.1",
@@ -53,6 +55,7 @@ quant-quality = "data_pipeline.quality:main"
 quant-factors = "factors.cli:main"
 quant-optimize = "portfolio.cli:main"
 quant-paper-api = "paper_trading.api:main"
+quant-dashboard = "paper_trading.launch:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

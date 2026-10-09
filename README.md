@@ -1,6 +1,6 @@
 # Quant Finance Portfolio (Python)
 
-A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **Projects 1–4 are implemented**; 5–6 are scaffolded for future work.
+A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **Projects 1–4 and 6 are implemented**; 5 is scaffolded for future work.
 
 ## Architecture
 
@@ -31,8 +31,8 @@ flowchart LR
 ## Quick start
 
 ```bash
-# Install with backtest + dev dependencies
-pip install -e ".[backtest,portfolio,dev]"
+# Install everything except ML (dashboard, API, research, tests)
+pip install -e ".[paper,dev]"
 
 # Option A: seed offline sample data (no network; skips symbols that already have data)
 python scripts/seed_sample_data.py
@@ -48,6 +48,10 @@ quant-factors --exclude SPY
 
 # Portfolio optimization (walk-forward comparison + current weights)
 quant-optimize --exclude SPY
+
+# Dashboard (http://localhost:8501) and paper trading API (http://127.0.0.1:8000/docs)
+quant-dashboard
+quant-paper-api
 
 # Data quality report
 quant-quality --config config/watchlist.yaml
@@ -65,7 +69,7 @@ pytest -v
 | 3 | `factors/` | **Done** | Cross-sectional factor screener + rank IC |
 | 4 | `portfolio/` | **Done** | Constrained optimizers + walk-forward comparison |
 | 5 | `ml_alpha/` | Scaffold | ML baselines with purged time-series CV |
-| 6 | `paper_trading/` | Scaffold | FastAPI + Streamlit paper trading |
+| 6 | `paper_trading/` | **Done** | Streamlit dashboard + FastAPI paper broker |
 
 ## Project 1: Market Data Pipeline
 
@@ -195,6 +199,36 @@ What this shows:
 - Single 9-asset universe and a single period, so differences between allocators are not statistically tested
 - Costs are a flat bps on turnover, with no market impact or borrow
 
+## Project 6: Paper Trading Dashboard
+
+**Resume hook:** *Shipped a Streamlit research dashboard and a FastAPI paper-trading service backed by a SQLite broker.*
+
+```bash
+quant-dashboard     # Streamlit UI on http://localhost:8501
+quant-paper-api     # REST API, interactive docs on http://127.0.0.1:8000/docs
+```
+
+**Dashboard tabs** (`paper_trading/dashboard.py`):
+- **Market**: price chart with moving averages for any watchlist symbol
+- **Backtest**: dual-MA or pair mean reversion with sliders for windows and costs, metrics vs buy & hold
+- **Factors**: rank IC table, cumulative IC chart and latest composite screen, with horizon/quantile controls
+- **Portfolio**: walk-forward comparison of all allocators, with max-weight and cost sliders, plus today's weights
+- **Paper trading**: account equity and P&L, order ticket, one-click rebalance to any allocator, positions, order history, reset
+
+**Paper broker** (`paper_trading/broker.py`):
+- Long-only cash account persisted in SQLite (`data/paper_trading.sqlite`, git-ignored), shared by the dashboard and the API
+- Whole-share market orders filled at the latest local close ± 5 bps slippage, plus 5 bps commission
+- Average-cost positions, realized and unrealized P&L
+- Rejected orders (insufficient cash, overselling, unknown symbol) are logged with a reason
+- Rebalancing sells first to free cash, sizes buys net of costs, and liquidates holdings outside the target
+
+**API** (`paper_trading/api.py`): `GET /account`, `/positions`, `/orders`, `/prices/{symbol}`, `/allocations/{method}`; `POST /orders`, `/rebalance`, `/reset`. Rejected orders return HTTP 400 with the reason.
+
+### Limitations
+
+- Prices are end-of-day closes from the local store, so fills only "move" after `quant-fetch`. There's no intraday feed or live broker connection.
+- Market orders only (no limit/stop orders), single account, no authentication. The API is meant to run on localhost.
+
 ## Repository layout
 
 ```
@@ -205,7 +239,7 @@ Quant/
 ├── factors/             # P3: factor library, IC analysis, screener
 ├── portfolio/           # P4: estimators, optimizers, walk-forward
 ├── ml_alpha/            # P5 scaffold
-├── paper_trading/       # P6 scaffold
+├── paper_trading/       # P6: broker, API, Streamlit dashboard
 ├── shared/              # types, config, db utils
 ├── scripts/seed_sample_data.py
 ├── tests/
@@ -216,12 +250,14 @@ Quant/
 ## Development
 
 ```bash
-make install   # pip install -e ".[backtest,portfolio,dev]"
+make install   # pip install -e ".[paper,dev]"
 make test
 make seed
 make backtest
 make factors
 make optimize
+make dashboard
+make api
 make lint      # ruff
 ```
 
@@ -229,6 +265,7 @@ make lint      # ruff
 
 - Built Parquet-based equity ETL with idempotent daily updates, SQLite metadata, and pytest coverage on parsers and pipeline orchestration.
 - Implemented event-driven backtester with dual-MA strategy, 5 bps transaction costs, and buy-and-hold benchmark comparison.
+- Shipped a Streamlit dashboard and FastAPI service over a SQLite paper broker that rebalances a live account to any research allocator.
 - Built a long-only constrained optimizer (min-variance, risk parity, max-Sharpe, factor mean-variance) with Ledoit-Wolf covariance and compared allocators in a walk-forward backtest net of transaction costs.
 - Built a cross-sectional factor screener (momentum, reversal, low-vol, liquidity) with rank-IC and quantile-spread evaluation on non-overlapping horizons and lookahead-bias tests.
 
