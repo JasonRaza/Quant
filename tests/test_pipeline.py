@@ -6,7 +6,6 @@ from unittest.mock import patch
 import pandas as pd
 
 from data_pipeline.pipeline import run_pipeline
-from shared.config import resolve_path
 
 
 def test_pipeline_fetches_and_stores(tmp_path, monkeypatch):

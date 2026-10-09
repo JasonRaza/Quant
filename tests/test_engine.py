@@ -9,7 +9,8 @@ from backtester.strategies import DualMovingAverageCrossover
 def test_dual_ma_backtest_deterministic(synthetic_bars):
     prices = synthetic_bars.rename(columns={"symbol": "sym"}).drop(columns=["sym"])
     strategy = DualMovingAverageCrossover(fast=3, slow=5)
-    engine = BacktestEngine(BacktestConfig(initial_capital=10_000, commission_bps=5, slippage_bps=5))
+    config = BacktestConfig(initial_capital=10_000, commission_bps=5, slippage_bps=5)
+    engine = BacktestEngine(config)
     result = engine.run(prices, strategy)
 
     assert len(result.equity) == len(prices)

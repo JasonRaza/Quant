@@ -7,6 +7,8 @@ import json
 import logging
 from pathlib import Path
 
+import pandas as pd
+
 from backtester.engine import BacktestConfig, BacktestEngine
 from backtester.strategies import DualMovingAverageCrossover, MeanReversionPair
 from data_pipeline.storage import ParquetStore
@@ -15,9 +17,7 @@ from shared.config import resolve_path
 logger = logging.getLogger(__name__)
 
 
-def load_prices(data_dir: Path, symbol: str) -> "pd.DataFrame":
-    import pandas as pd
-
+def load_prices(data_dir: Path, symbol: str) -> pd.DataFrame:
     store = ParquetStore(data_dir)
     df = store.load(symbol)
     if df.empty:
@@ -27,9 +27,7 @@ def load_prices(data_dir: Path, symbol: str) -> "pd.DataFrame":
     return df
 
 
-def load_pair_prices(data_dir: Path, sym_a: str, sym_b: str) -> "pd.DataFrame":
-    import pandas as pd
-
+def load_pair_prices(data_dir: Path, sym_a: str, sym_b: str) -> pd.DataFrame:
     a = load_prices(data_dir, sym_a)[["date", "close"]].rename(columns={"close": "close_a"})
     b = load_prices(data_dir, sym_b)[["date", "close"]].rename(columns={"close": "close_b"})
     merged = pd.merge(a, b, on="date", how="inner").sort_values("date")
