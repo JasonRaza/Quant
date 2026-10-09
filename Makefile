@@ -1,4 +1,4 @@
-.PHONY: install test fetch backtest seed quality lint
+.PHONY: install test fetch backtest factors seed quality lint
 
 install:
 	pip install -e ".[backtest,dev]"
@@ -14,6 +14,9 @@ fetch:
 
 backtest:
 	quant-backtest --strategy dual_ma --symbol SPY
+
+factors:
+	quant-factors --config config/watchlist.yaml --exclude SPY KO PEP
 
 quality:
 	quant-quality --config config/watchlist.yaml

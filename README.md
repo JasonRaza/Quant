@@ -1,6 +1,6 @@
 # Quant Finance Portfolio (Python)
 
-A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **Projects 1–2 are fully implemented**; 3–6 are scaffolded for future work.
+A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **Projects 1–3 are implemented**; 4–6 are scaffolded for future work.
 
 ## Architecture
 
@@ -43,6 +43,9 @@ quant-fetch --config config/watchlist.yaml
 # Run backtest (dual moving-average on SPY)
 quant-backtest --strategy dual_ma --symbol SPY
 
+# Factor research (IC report + latest screen)
+quant-factors --exclude SPY KO PEP
+
 # Data quality report
 quant-quality --config config/watchlist.yaml
 
@@ -56,7 +59,7 @@ pytest -v
 |---|--------|--------|-------------|
 | 1 | `data_pipeline/` | **Done** | Idempotent OHLCV ETL → Parquet + SQLite metadata |
 | 2 | `backtester/` | **Done** | Event-driven engine, dual-MA & pair mean-reversion |
-| 3 | `factors/` | Scaffold | Cross-sectional factor screener + IC |
+| 3 | `factors/` | **Done** | Cross-sectional factor screener + rank IC |
 | 4 | `portfolio/` | Scaffold | Markowitz optimizer with constraints |
 | 5 | `ml_alpha/` | Scaffold | ML baselines with purged time-series CV |
 | 6 | `paper_trading/` | Scaffold | FastAPI + Streamlit paper trading |
@@ -114,6 +117,42 @@ Run on ~2 years of synthetic SPY bars (`scripts/seed_sample_data.py`):
 
 ![Equity curve](reports/equity_curve.png)
 
+## Project 3: Factor Screener
+
+**Resume hook:** *Built a cross-sectional factor research tool measuring rank IC on non-overlapping horizons.*
+
+- CLI: `quant-factors`
+- Factors (`factors/library.py`): momentum 12-1, 1-month reversal, low volatility, liquidity (log dollar volume)
+- Evaluation (`factors/analysis.py`): Spearman rank IC per rebalance date, IC mean / IR / t-stat / hit rate, quantile forward returns and top-minus-bottom spread
+- Rebalance dates are spaced by the horizon (default 21 days) so forward-return windows don't overlap and t-stats aren't inflated
+- Screen: equal-weight composite of cross-sectional z-scores, ranked on the latest date
+- No lookahead: a test perturbs future prices and checks past factor values are unchanged
+
+```bash
+quant-factors --exclude SPY KO PEP --horizon 21 --quantiles 3
+```
+
+Outputs: `reports/factor_report.json`, `reports/factor_ic.png`
+
+### Results (7 large caps, 2020–2026, 21-day horizon)
+
+| Factor | IC mean | t-stat | Hit rate |
+|--------|---------|--------|----------|
+| momentum_12_1 | 0.004 | 0.07 | 55% |
+| reversal_1m | 0.033 | 0.79 | 54% |
+| low_vol | -0.020 | -0.37 | 53% |
+| liquidity | -0.037 | -0.68 | 47% |
+
+None of the factors is statistically significant (|t| < 2). With only 7 names, each cross-section is very noisy, so treat this as a working pipeline, not as evidence of alpha.
+
+![Cumulative IC](reports/factor_ic.png)
+
+### Limitations
+
+- Tiny, survivor-biased universe (today's mega caps), so you need many more names for meaningful IC
+- Price/volume factors only; value and quality need fundamentals data
+- KO/PEP/SPY Parquet files currently mix synthetic seed bars with live data, so exclude them or re-fetch
+
 ## Repository layout
 
 ```
@@ -121,7 +160,7 @@ Quant/
 ├── config/watchlist.yaml
 ├── data_pipeline/       # P1: fetch, store, quality
 ├── backtester/          # P2: engine, strategies, metrics
-├── factors/             # P3 scaffold
+├── factors/             # P3: factor library, IC analysis, screener
 ├── portfolio/           # P4 scaffold
 ├── ml_alpha/            # P5 scaffold
 ├── paper_trading/       # P6 scaffold
@@ -139,6 +178,7 @@ make install   # pip install -e ".[backtest,dev]"
 make test
 make seed
 make backtest
+make factors
 make lint      # ruff
 ```
 
@@ -146,6 +186,7 @@ make lint      # ruff
 
 - Built Parquet-based equity ETL with idempotent daily updates, SQLite metadata, and pytest coverage on parsers and pipeline orchestration.
 - Implemented event-driven backtester with dual-MA strategy, 5 bps transaction costs, and buy-and-hold benchmark comparison.
+- Built a cross-sectional factor screener (momentum, reversal, low-vol, liquidity) with rank-IC and quantile-spread evaluation on non-overlapping horizons and lookahead-bias tests.
 
 ## License
 

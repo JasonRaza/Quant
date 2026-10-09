@@ -77,3 +77,22 @@ def test_zscore_and_composite():
     assert comp.abs().max().max() < 1e-12  # opposite factors cancel
     with pytest.raises(ValueError):
         composite_score({"a": factor}, {"a": 0.0})
+
+
+def test_evaluate_and_screen_end_to_end():
+    from factors.cli import evaluate_factors, latest_screen
+    from factors.library import compute_factors
+    from tests.test_factors import make_panel
+
+    panel = make_panel(n_days=320, symbols=("A", "B", "C", "D", "E", "F"))
+    factors = compute_factors(panel)
+    report, ic_series = evaluate_factors(factors, panel.close, horizon=21, n_quantiles=3)
+    assert set(report) == set(factors)
+    assert report["low_vol"]["n"] > 0
+    assert set(report["low_vol"]["quantile_mean_return"]) == {"q1", "q2", "q3"}
+
+    screen = latest_screen(factors)
+    ranks = [r["rank"] for r in screen["rankings"]]
+    assert ranks == list(range(1, 7))
+    composites = [r["composite"] for r in screen["rankings"]]
+    assert composites == sorted(composites, reverse=True)

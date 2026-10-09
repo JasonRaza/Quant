@@ -51,6 +51,7 @@ all = [
 quant-fetch = "data_pipeline.cli:main"
 quant-backtest = "backtester.cli:main"
 quant-quality = "data_pipeline.quality:main"
+quant-factors = "factors.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
