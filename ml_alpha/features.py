@@ -31,13 +31,13 @@ class Dataset:
 def raw_features(panel: PricePanel) -> dict[str, pd.DataFrame]:
     close, volume = panel.close, panel.volume
     rets = close.pct_change(fill_method=None)
+    # 1-month return and 63-day volatility are already covered by the Project 3
+    # reversal and low-vol factors (same ranks, opposite sign), so they're omitted.
     feats = {
         "ret_5d": close / close.shift(5) - 1,
-        "ret_21d": close / close.shift(21) - 1,
         "ret_63d": close / close.shift(63) - 1,
         "ret_126d": close / close.shift(126) - 1,
         "vol_21d": rets.rolling(21, min_periods=21).std() * np.sqrt(252),
-        "vol_63d": rets.rolling(63, min_periods=63).std() * np.sqrt(252),
         "dist_ma50": close / close.rolling(50, min_periods=50).mean() - 1,
         "dist_ma200": close / close.rolling(200, min_periods=200).mean() - 1,
         "volume_z": (volume - volume.rolling(63).mean()) / volume.rolling(63).std(),

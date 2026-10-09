@@ -122,3 +122,10 @@ def test_models_learn_a_planted_signal():
 
     baseline = cross_validate(SingleFeatureBaseline("ret_63d"), ds.X, y, splits)
     assert baseline.summary["ic_mean"] > 0.5
+
+
+def test_no_duplicate_features_after_ranking():
+    X = build_dataset(make_panel()).X
+    corr = X.corr().abs().to_numpy(copy=True)
+    np.fill_diagonal(corr, 0)
+    assert corr.max() < 0.999
