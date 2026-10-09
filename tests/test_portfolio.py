@@ -19,6 +19,7 @@ from portfolio.optimizer import (
     risk_contributions,
     risk_parity,
 )
+from portfolio.walkforward import WalkForwardConfig, default_allocators, run_walkforward
 
 ASSETS = ["A", "B", "C", "D"]
 
@@ -110,3 +111,63 @@ def test_factor_alpha_scaling():
     alpha = factor_alpha(score, cov, ic=0.1)
     np.testing.assert_allclose(alpha.to_numpy(), [0.01, 0.02, -0.03, -0.04])
     assert historical_mean(random_returns()).shape == (4,)
+
+
+def walkforward_returns(n=400, seed=7) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2022-01-03", periods=n)
+    return pd.DataFrame(rng.normal(0.0004, 0.01, (n, len(ASSETS))), index=idx, columns=ASSETS)
+
+
+def test_walkforward_equal_weight_no_costs_matches_manual():
+    rets = walkforward_returns()
+    cfg = WalkForwardConfig(lookback=100, rebalance_every=1, cost_bps=0.0, initial_capital=1.0)
+    res = run_walkforward(rets, lambda win, dt: pd.Series(0.25, index=win.columns), cfg)
+    # Daily rebalanced equal weight = compounding the cross-sectional mean return.
+    expected = (1 + rets.iloc[100:].mean(axis=1)).prod()
+    assert res.equity.iloc[-1] == pytest.approx(expected)
+    assert res.equity.index[0] == rets.index[99]
+
+
+def test_walkforward_allocator_never_sees_future():
+    rets = walkforward_returns()
+    seen = []
+
+    def spy(window, dt):
+        seen.append((window.index[-1], dt, len(window)))
+        return pd.Series(0.25, index=window.columns)
+
+    run_walkforward(rets, spy, WalkForwardConfig(lookback=100, rebalance_every=21))
+    assert seen and all(last == dt and n == 100 for last, dt, n in seen)
+
+
+def test_walkforward_costs_reduce_equity():
+    rets = walkforward_returns()
+
+    def flipper(window, dt):
+        """Alternate 100% A / 100% B each rebalance: turnover of 2 per trade."""
+        held = "A" if (rets.index.get_loc(dt) // 21) % 2 == 0 else "B"
+        return pd.Series([1.0 if a == held else 0.0 for a in ASSETS], index=ASSETS)
+
+    free = run_walkforward(rets, flipper, WalkForwardConfig(lookback=100, cost_bps=0.0))
+    costly = run_walkforward(rets, flipper, WalkForwardConfig(lookback=100, cost_bps=50.0))
+    assert costly.equity.iloc[-1] < free.equity.iloc[-1]
+    assert costly.metrics["total_costs"] > 0
+    assert costly.metrics["avg_turnover"] == pytest.approx(2.0)
+
+
+def test_default_allocators_run_and_respect_cap():
+    rets = walkforward_returns()
+    scores = pd.DataFrame(
+        np.tile([2.0, 1.0, -1.0, -2.0], (len(rets), 1)), index=rets.index, columns=ASSETS
+    )
+    cons = Constraints(max_weight=0.4)
+    for name, alloc in default_allocators(cons, scores).items():
+        w = run_walkforward(rets, alloc, WalkForwardConfig(lookback=100)).weights
+        assert np.allclose(w.sum(axis=1), 1.0), name
+        if name != "risk_parity":
+            assert (w <= 0.4 + 1e-6).all().all(), name
+
+    factor_mv = default_allocators(cons, scores)["factor_mean_variance"]
+    tilt = run_walkforward(rets, factor_mv, WalkForwardConfig(lookback=100))
+    assert (tilt.weights["A"] > tilt.weights["D"]).all()
