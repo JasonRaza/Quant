@@ -13,6 +13,11 @@ from paper_trading.tutorial import (
     ch05_backtesting,
     ch06_pitfalls,
     ch07_pairs,
+    ch08_factors,
+    ch09_portfolio,
+    ch10_ml,
+    ch11_trading,
+    ch12_glossary,
 )
 from paper_trading.tutorial.common import CHAPTERS, PAGES, Chapter
 
@@ -88,6 +93,51 @@ _CHAPTERS = [
         "Trend vs mean reversion, spreads, z-scores and market neutrality",
         15,
         ch07_pairs.render,
+    ),
+    Chapter(
+        ch08_factors.SLUG,
+        8,
+        "Factors",
+        "🏷️",
+        "Ranking stocks, the information coefficient and telling signal from noise",
+        20,
+        ch08_factors.render,
+    ),
+    Chapter(
+        ch09_portfolio.SLUG,
+        9,
+        "Building portfolios",
+        "🧺",
+        "Diversification, optimizers, estimation noise and walk-forward tests",
+        20,
+        ch09_portfolio.render,
+    ),
+    Chapter(
+        ch10_ml.SLUG,
+        10,
+        "Machine learning",
+        "🤖",
+        "Features and labels, overfitting, and why validation must not leak",
+        20,
+        ch10_ml.render,
+    ),
+    Chapter(
+        ch11_trading.SLUG,
+        11,
+        "From research to trading",
+        "📨",
+        "Orders, spreads, paper trading and what production really requires",
+        15,
+        ch11_trading.render,
+    ),
+    Chapter(
+        ch12_glossary.SLUG,
+        12,
+        "Glossary and final quiz",
+        "🎓",
+        "Every key term in one place, and a final check of what you learned",
+        10,
+        ch12_glossary.render,
     ),
 ]
 
