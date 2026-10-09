@@ -1,4 +1,1 @@
-"""Factor screener and ranker (Project 3 — scaffold)."""
-
-# Planned: momentum, value proxy, low-vol factors with IC analysis.
-# Run after data_pipeline is populated.
+"""Cross-sectional factor library, IC analysis and screener (Project 3)."""

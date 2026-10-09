@@ -1,3 +1,1 @@
-"""Paper trading API and dashboard (Project 6 — scaffold)."""
-
-# Planned: FastAPI backend + Streamlit dashboard for paper execution.
+"""SQLite paper broker, REST API and Streamlit dashboard (Project 6)."""

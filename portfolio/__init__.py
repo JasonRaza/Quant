@@ -1,3 +1,1 @@
-"""Mean-variance portfolio optimizer (Project 4 — scaffold)."""
-
-# Planned: Markowitz optimization with Ledoit-Wolf covariance shrinkage.
+"""Covariance estimation, constrained optimizers and walk-forward tests (Project 4)."""

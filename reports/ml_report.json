@@ -1,0 +1,92 @@
+{
+  "universe": [
+    "AAPL",
+    "AMZN",
+    "GOOGL",
+    "JPM",
+    "KO",
+    "META",
+    "MSFT",
+    "NVDA",
+    "PEP"
+  ],
+  "samples": 2565,
+  "features": [
+    "ret_5d",
+    "ret_63d",
+    "ret_126d",
+    "vol_21d",
+    "dist_ma50",
+    "dist_ma200",
+    "volume_z",
+    "momentum_12_1",
+    "reversal_1m",
+    "low_vol",
+    "liquidity"
+  ],
+  "settings": {
+    "horizon_days": 21,
+    "sample_every_days": 5,
+    "splits": 5,
+    "min_train_dates": 52,
+    "embargo_days": 5
+  },
+  "out_of_sample_period": [
+    "2022-01-18",
+    "2026-09-02"
+  ],
+  "models": {
+    "momentum_baseline": {
+      "purged_walk_forward": {
+        "ic_mean": 0.0308,
+        "ic_std": 0.4308,
+        "ic_ir": 0.0715,
+        "t_stat": 0.5489,
+        "hit_rate": 0.5085,
+        "n": 59,
+        "ic_mean_all_dates": 0.0298
+      },
+      "long_short_ann_return": -0.0084,
+      "leaky_shuffled_kfold_ic_mean": 0.0306
+    },
+    "ridge": {
+      "purged_walk_forward": {
+        "ic_mean": 0.0379,
+        "ic_std": 0.3865,
+        "ic_ir": 0.0979,
+        "t_stat": 0.7522,
+        "hit_rate": 0.5254,
+        "n": 59,
+        "ic_mean_all_dates": 0.026
+      },
+      "long_short_ann_return": 0.0146,
+      "leaky_shuffled_kfold_ic_mean": 0.0852
+    },
+    "gradient_boosting": {
+      "purged_walk_forward": {
+        "ic_mean": 0.0071,
+        "ic_std": 0.3939,
+        "ic_ir": 0.0179,
+        "t_stat": 0.1377,
+        "hit_rate": 0.4576,
+        "n": 59,
+        "ic_mean_all_dates": -0.0009
+      },
+      "long_short_ann_return": -0.0224,
+      "leaky_shuffled_kfold_ic_mean": 0.2431
+    }
+  },
+  "ridge_coefficients_full_sample": {
+    "dist_ma200": 0.02725,
+    "vol_21d": 0.02364,
+    "reversal_1m": 0.01934,
+    "momentum_12_1": -0.0139,
+    "ret_63d": -0.01283,
+    "low_vol": -0.0091,
+    "volume_z": -0.00702,
+    "liquidity": 0.00531,
+    "ret_126d": 0.00455,
+    "ret_5d": 0.00267,
+    "dist_ma50": 0.00154
+  }
+}

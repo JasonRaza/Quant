@@ -1,6 +1,6 @@
 # Quant Finance Portfolio (Python)
 
-A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **Projects 1–4 and 6 are implemented**; 5 is scaffolded for future work.
+A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **All six projects are implemented.**
 
 ## Architecture
 
@@ -31,8 +31,8 @@ flowchart LR
 ## Quick start
 
 ```bash
-# Install everything except ML (dashboard, API, research, tests)
-pip install -e ".[paper,dev]"
+# Install everything (research, ML, dashboard, API, tests)
+pip install -e ".[all]"
 
 # Option A: seed offline sample data (no network; skips symbols that already have data)
 python scripts/seed_sample_data.py
@@ -48,6 +48,9 @@ quant-factors --exclude SPY
 
 # Portfolio optimization (walk-forward comparison + current weights)
 quant-optimize --exclude SPY
+
+# ML alpha: purged walk-forward CV vs leaky CV
+quant-ml --exclude SPY
 
 # Dashboard (http://localhost:8501) and paper trading API (http://127.0.0.1:8000/docs)
 quant-dashboard
@@ -68,7 +71,7 @@ pytest -v
 | 2 | `backtester/` | **Done** | Event-driven engine, dual-MA & pair mean-reversion |
 | 3 | `factors/` | **Done** | Cross-sectional factor screener + rank IC |
 | 4 | `portfolio/` | **Done** | Constrained optimizers + walk-forward comparison |
-| 5 | `ml_alpha/` | Scaffold | ML baselines with purged time-series CV |
+| 5 | `ml_alpha/` | **Done** | ML baselines with purged time-series CV |
 | 6 | `paper_trading/` | **Done** | Streamlit dashboard + FastAPI paper broker |
 
 ## Project 1: Market Data Pipeline
@@ -206,6 +209,43 @@ What this shows:
 - Single 9-asset universe and a single period, so differences between allocators are not statistically tested
 - Costs are a flat bps on turnover, with no market impact or borrow
 
+## Project 5: ML Alpha Baseline
+
+**Resume hook:** *Built ML return-prediction baselines with purged walk-forward cross-validation and quantified how much leaky CV inflates results.*
+
+- CLI: `quant-ml`
+- Dataset (`ml_alpha/features.py`): one row per (date, symbol), sampled weekly. 11 cross-sectionally ranked features: short/medium-term returns, 21-day volatility, distance to the 50/200-day MA, volume z-score, and the four Project 3 factors.
+- Label: 21-day forward return, demeaned across symbols, so models predict which names beat the others rather than market direction
+- CV (`ml_alpha/cv.py`): expanding-window walk-forward split by date. Training samples whose 21-day label window reaches into the test block are **purged**, plus a 5-day embargo.
+- Models (`ml_alpha/models.py`): momentum-rank baseline (no fitting), ridge regression, gradient-boosted trees (scikit-learn `HistGradientBoostingRegressor`)
+- Evaluation: out-of-sample rank IC per date, t-stat on non-overlapping dates only, top-minus-bottom tercile spread. Each model is also scored with a shuffled K-fold to show the leakage effect.
+
+```bash
+quant-ml --exclude SPY --horizon 21 --splits 5 --embargo-days 5
+```
+
+Outputs: `reports/ml_report.json`, `reports/ml_oos_ic.png`
+
+### Results (9 large caps, out-of-sample Jan 2022 – Sep 2026)
+
+| Model | OOS IC (purged) | t-stat | Long-short (ann.) | IC with leaky shuffled K-fold |
+|-------|-----------------|--------|-------------------|-------------------------------|
+| Momentum baseline | 0.031 | 0.55 | -0.8% | 0.031 |
+| Ridge | 0.038 | 0.75 | +1.5% | 0.085 |
+| Gradient boosting | 0.007 | 0.14 | -2.2% | **0.243** |
+
+What this shows:
+- **Leakage is the headline.** Under a shuffled K-fold, gradient boosting looks like a strong signal (IC 0.24). Evaluated properly, it's indistinguishable from zero. The baseline, which learns nothing, scores the same under both schemes, which confirms the gap comes from training on overlapping future labels.
+- Ridge only matches the one-feature momentum baseline, and nothing is statistically significant. With 9 stocks there's simply too little cross-sectional signal to learn.
+
+![ML out-of-sample IC](reports/ml_oos_ic.png)
+
+### Limitations
+
+- 9 names × ~285 weekly dates: far too small for ML to beat simple baselines; a broad universe (e.g. S&P 500) is the real test
+- Hyperparameters are fixed, not tuned. Tuning would need a nested purged CV to avoid a new layer of leakage.
+- Price/volume features only; no fundamentals, sentiment or alternative data
+
 ## Project 6: Paper Trading Dashboard
 
 **Resume hook:** *Shipped a Streamlit research dashboard and a FastAPI paper-trading service backed by a SQLite broker.*
@@ -245,7 +285,7 @@ Quant/
 ├── backtester/          # P2: engine, strategies, metrics
 ├── factors/             # P3: factor library, IC analysis, screener
 ├── portfolio/           # P4: estimators, optimizers, walk-forward
-├── ml_alpha/            # P5 scaffold
+├── ml_alpha/            # P5: features, purged CV, models
 ├── paper_trading/       # P6: broker, API, Streamlit dashboard
 ├── shared/              # types, config, db utils
 ├── scripts/seed_sample_data.py
@@ -257,12 +297,13 @@ Quant/
 ## Development
 
 ```bash
-make install   # pip install -e ".[paper,dev]"
+make install   # pip install -e ".[all]"
 make test
 make seed
 make backtest
 make factors
 make optimize
+make ml
 make dashboard
 make api
 make lint      # ruff
@@ -272,6 +313,7 @@ make lint      # ruff
 
 - Built Parquet-based equity ETL with idempotent daily updates, SQLite metadata, and pytest coverage on parsers and pipeline orchestration.
 - Implemented event-driven backtester with dual-MA strategy, 5 bps transaction costs, and buy-and-hold benchmark comparison.
+- Built ML return-prediction baselines (ridge, gradient boosting) with purged walk-forward CV and showed a shuffled K-fold inflates out-of-sample IC from ~0 to 0.24.
 - Shipped a Streamlit dashboard and FastAPI service over a SQLite paper broker that rebalances a live account to any research allocator.
 - Built a long-only constrained optimizer (min-variance, risk parity, max-Sharpe, factor mean-variance) with Ledoit-Wolf covariance and compared allocators in a walk-forward backtest net of transaction costs.
 - Built a cross-sectional factor screener (momentum, reversal, low-vol, liquidity) with rank-IC and quantile-spread evaluation on non-overlapping horizons and lookahead-bias tests.

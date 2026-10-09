@@ -28,8 +28,8 @@ portfolio = [
     "scipy>=1.11",
 ]
 ml = [
+    "quant-portfolio[factors]",
     "scikit-learn>=1.3",
-    "lightgbm>=4.0",
 ]
 paper = [
     "quant-portfolio[backtest,portfolio]",
@@ -56,6 +56,7 @@ quant-factors = "factors.cli:main"
 quant-optimize = "portfolio.cli:main"
 quant-paper-api = "paper_trading.api:main"
 quant-dashboard = "paper_trading.launch:main"
+quant-ml = "ml_alpha.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
