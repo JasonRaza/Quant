@@ -107,6 +107,8 @@ quant-backtest --strategy dual_ma --symbol SPY --fast 20 --slow 50
 quant-backtest --strategy mean_reversion --pair KO PEP
 ```
 
+Pair trades run on a dollar-neutral spread (long $1 of A, short $1 of B, rebalanced daily), and costs are charged on both legs.
+
 Outputs: `reports/backtest_results.json`, `reports/equity_curve.png`
 
 ## Results (live data, dual-MA 20/50 on SPY)
@@ -121,6 +123,8 @@ Run on Yahoo Finance daily bars, Jan 2020 – Oct 2026 (`quant-fetch`):
 | Trades | 83 | — |
 
 The crossover cuts the drawdown a little but gives up about half of the buy-and-hold return after costs. That's a typical result for trend filters on a strongly trending index. *Past performance does not guarantee future results.*
+
+KO/PEP mean reversion over the same period (20-day z-score, enter at ±2, exit at ±0.5) loses money: -42.5% total return, Sharpe -0.75, 517 trades. The raw price-difference spread isn't stable enough to fade, and the round trips get eaten by double-leg costs.
 
 ![Equity curve](reports/equity_curve.png)
 

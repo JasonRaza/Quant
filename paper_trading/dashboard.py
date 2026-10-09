@@ -9,7 +9,11 @@ import pandas as pd
 import streamlit as st
 
 from backtester.engine import BacktestConfig, BacktestEngine
-from backtester.strategies import DualMovingAverageCrossover, MeanReversionPair
+from backtester.strategies import (
+    DualMovingAverageCrossover,
+    MeanReversionPair,
+    pair_spread_prices,
+)
 from data_pipeline.storage import ParquetStore
 from factors.analysis import composite_score
 from factors.cli import evaluate_factors, latest_screen
@@ -65,16 +69,18 @@ def load_symbol(symbol: str, _version: float) -> pd.DataFrame:
 
 @st.cache_data
 def run_backtest(strategy, symbol, pair, fast, slow, capital, bps, _version):
-    engine = BacktestEngine(BacktestConfig(capital, commission_bps=bps, slippage_bps=bps))
+    legs = 1 if strategy == "dual_ma" else 2  # pair trades pay costs on both legs
+    engine = BacktestEngine(BacktestConfig(capital, bps * legs, bps * legs))
     if strategy == "dual_ma":
         prices = load_symbol(symbol, _version).reset_index()
         result = engine.run(prices, DualMovingAverageCrossover(fast, slow))
     else:
         a = load_symbol(pair[0], _version)[["close"]].rename(columns={"close": "close_a"})
         b = load_symbol(pair[1], _version)[["close"]].rename(columns={"close": "close_b"})
-        prices = a.join(b, how="inner").reset_index()
+        prices = pair_spread_prices(a.join(b, how="inner").reset_index())
         result = engine.run(prices, MeanReversionPair())
-    curves = pd.DataFrame({"Strategy": result.equity, "Buy & hold": result.benchmark_equity})
+    bench_label = "Buy & hold" if strategy == "dual_ma" else "Long spread & hold"
+    curves = pd.DataFrame({"Strategy": result.equity, bench_label: result.benchmark_equity})
     return result.metrics, curves, len(result.trades)
 
 
@@ -169,8 +175,8 @@ with tab_bt:
             c = st.columns(4)
             excess = m["total_return"] - m["benchmark_total_return"]
             sharpe_diff = m["sharpe"] - m["benchmark_sharpe"]
-            c[0].metric("Total return", pct(m["total_return"]), f"{excess:+.2%} vs B&H")
-            c[1].metric("Sharpe", f"{m['sharpe']:.2f}", f"{sharpe_diff:+.2f} vs B&H")
+            c[0].metric("Total return", pct(m["total_return"]), f"{excess:+.2%} vs benchmark")
+            c[1].metric("Sharpe", f"{m['sharpe']:.2f}", f"{sharpe_diff:+.2f} vs benchmark")
             c[2].metric("Max drawdown", pct(m["max_drawdown"]))
             c[3].metric("Trades", n_trades)
             st.line_chart(curves, height=380)

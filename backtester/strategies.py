@@ -65,3 +65,19 @@ class MeanReversionPair(Strategy):
                     current = 0.0
             position.iloc[i] = current
         return position.shift(1).fillna(0.0)
+
+
+def pair_spread_prices(pair: pd.DataFrame) -> pd.DataFrame:
+    """Add a tradable `close` for a dollar-neutral long A / short B position.
+
+    The single-asset engine needs one price series. This builds the value of a
+    position that is long $1 of A and short $1 of B, rebalanced daily, so a
+    signal of +1 means long the spread and -1 means short it. Each trade touches
+    two legs in reality, so callers should double the per-leg cost assumptions.
+    """
+    if "close_a" not in pair.columns or "close_b" not in pair.columns:
+        raise ValueError("pair prices require close_a and close_b columns")
+    out = pair.copy()
+    ret = out["close_a"].pct_change() - out["close_b"].pct_change()
+    out["close"] = 100.0 * (1 + ret.fillna(0.0)).cumprod()
+    return out

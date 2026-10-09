@@ -10,7 +10,11 @@ from pathlib import Path
 import pandas as pd
 
 from backtester.engine import BacktestConfig, BacktestEngine
-from backtester.strategies import DualMovingAverageCrossover, MeanReversionPair
+from backtester.strategies import (
+    DualMovingAverageCrossover,
+    MeanReversionPair,
+    pair_spread_prices,
+)
 from data_pipeline.storage import ParquetStore
 from shared.config import resolve_path
 
@@ -31,7 +35,7 @@ def load_pair_prices(data_dir: Path, sym_a: str, sym_b: str) -> pd.DataFrame:
     a = load_prices(data_dir, sym_a)[["date", "close"]].rename(columns={"close": "close_a"})
     b = load_prices(data_dir, sym_b)[["date", "close"]].rename(columns={"close": "close_b"})
     merged = pd.merge(a, b, on="date", how="inner").sort_values("date")
-    return merged
+    return pair_spread_prices(merged.reset_index(drop=True))
 
 
 def save_equity_chart(result, output_path: Path) -> None:
@@ -73,10 +77,12 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     data_dir = resolve_path(args.data_dir)
 
+    # A pair trade has two legs, so each spread trade pays costs twice.
+    legs = 2 if args.strategy == "mean_reversion" else 1
     config = BacktestConfig(
         initial_capital=args.capital,
-        commission_bps=args.commission_bps,
-        slippage_bps=args.slippage_bps,
+        commission_bps=args.commission_bps * legs,
+        slippage_bps=args.slippage_bps * legs,
     )
     engine = BacktestEngine(config)
 
