@@ -86,6 +86,7 @@ pytest -v
 ### Limitations (document honestly in interviews)
 
 - Yahoo Finance data may have gaps and is not adjusted for all corporate actions consistently
+- Prices are split/dividend-adjusted, but incremental fetches don't re-adjust older bars when a new dividend is paid, so do a full re-fetch periodically
 - No survivorship-bias-free index membership history in v1
 - Approximate trading-day missing % (weekends/holidays not fully modeled)
 
@@ -94,7 +95,8 @@ pytest -v
 **Resume hook:** *Implemented an event-driven backtester with transaction costs.*
 
 - Strategies: `DualMovingAverageCrossover`, `MeanReversionPair` (KO/PEP)
-- Costs: configurable commission + slippage (default 5 bps each)
+- Costs: slippage moves the fill price and commission is charged once on notional (default 5 bps each)
+- Trades only when the signal changes; longs are sized net of costs so cash never goes negative
 - Metrics: total return, Sharpe, max drawdown, win rate, turnover
 - Benchmark: buy-and-hold comparison
 - No lookahead: signals shifted by one bar before execution
@@ -113,18 +115,19 @@ Outputs: `reports/backtest_results.json`, `reports/equity_curve.png`
 
 ## Results (live data, dual-MA 20/50 on SPY)
 
-Run on Yahoo Finance daily bars, Jan 2020 – Oct 2026 (`quant-fetch`):
+Run on Yahoo Finance daily bars (split- and dividend-adjusted), Jan 2, 2020 – Oct 8, 2026 (`quant-fetch`):
 
 | Metric | Strategy | Buy & Hold |
 |--------|----------|------------|
-| Total return | 78.36% | 163.11% |
-| Sharpe (ann.) | 0.77 | 0.82 |
-| Max drawdown | -28.93% | -33.72% |
-| Trades | 83 | — |
+| Total return | 82.47% | 162.00% |
+| Sharpe (ann.) | 0.80 | 0.81 |
+| Max drawdown | -28.08% | -33.72% |
+| Trades | 27 | — |
+| Costs paid | $3,668 | — |
 
 The crossover cuts the drawdown a little but gives up about half of the buy-and-hold return after costs. That's a typical result for trend filters on a strongly trending index. *Past performance does not guarantee future results.*
 
-KO/PEP mean reversion over the same period (20-day z-score, enter at ±2, exit at ±0.5) loses money: -42.5% total return, Sharpe -0.75, 517 trades. The raw price-difference spread isn't stable enough to fade, and the round trips get eaten by double-leg costs.
+KO/PEP mean reversion over the same period (20-day z-score, enter at ±2, exit at ±0.5) loses money: -22.7% total return, Sharpe -0.31, 125 trades, against +49.3% for simply holding the long-KO/short-PEP spread. The raw price-difference spread isn't stable enough to fade, and the round trips get eaten by double-leg costs.
 
 ![Equity curve](reports/equity_curve.png)
 
@@ -145,7 +148,7 @@ quant-factors --exclude SPY --horizon 21 --quantiles 3
 
 Outputs: `reports/factor_report.json`, `reports/factor_ic.png`
 
-### Results (9 large caps, 2020–2026, 21-day horizon)
+### Results (9 large caps, Jan 2020 – Oct 8, 2026, 21-day horizon)
 
 | Factor | IC mean | t-stat | Hit rate |
 |--------|---------|--------|----------|
@@ -179,16 +182,16 @@ quant-optimize --exclude SPY --max-weight 0.25 --cost-bps 10
 
 Outputs: `reports/portfolio_report.json` (walk-forward metrics, current weights, risk contributions), `reports/portfolio_equity.png`
 
-### Results (9 large caps, Jan 2021 – Oct 2026, net of costs)
+### Results (9 large caps, Jan 2021 – Oct 8, 2026, net of costs)
 
 | Allocator | Total return | Sharpe | Max DD | Avg turnover / rebalance | Effective holdings |
 |-----------|--------------|--------|--------|--------------------------|--------------------|
-| Equal weight | 238.6% | 1.14 | -34.9% | 5% | 9.0 |
-| Min variance | 104.2% | 0.94 | -22.0% | 9% | 4.9 |
-| Risk parity | 165.6% | 1.12 | -26.9% | 6% | 7.4 |
-| Factor mean-variance | 113.9% | 0.99 | -20.4% | 24% | 4.9 |
-| Max Sharpe (trailing mean) | 245.0% | 1.19 | -25.2% | 29% | 4.6 |
-| SPY buy & hold | 124.4% | 0.93 | -24.5% | — | — |
+| Equal weight | 238.4% | 1.13 | -34.9% | 5% | 9.0 |
+| Min variance | 106.1% | 0.95 | -22.0% | 9% | 4.9 |
+| Risk parity | 167.0% | 1.13 | -26.9% | 6% | 7.4 |
+| Factor mean-variance | 115.5% | 0.99 | -20.4% | 24% | 4.9 |
+| Max Sharpe (trailing mean) | 246.5% | 1.19 | -25.2% | 29% | 4.6 |
+| SPY buy & hold | 123.5% | 0.92 | -24.5% | — | — |
 
 What this shows:
 - Min variance and risk parity deliver what they promise: lower drawdowns than equal weight. They pay for it in return, because they tilt toward KO, PEP and JPM.
