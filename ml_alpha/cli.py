@@ -7,12 +7,13 @@ import json
 import logging
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from data_pipeline.storage import ParquetStore
 from factors.panel import build_panel
 from ml_alpha.cv import PurgedWalkForward, leaky_kfold
-from ml_alpha.features import build_dataset
+from ml_alpha.features import Dataset, build_dataset
 from ml_alpha.models import cross_validate, default_models, ridge_coefficients
 from shared.config import load_yaml, resolve_path
 
@@ -42,6 +43,38 @@ def save_ic_chart(ic_series: dict[str, pd.Series], output_path: Path) -> None:
     plt.close(fig)
 
 
+def evaluate_models(
+    ds: Dataset,
+    horizon: int = 21,
+    sample_every: int = 5,
+    n_splits: int = 5,
+    min_train_dates: int = 52,
+    embargo_days: int = 5,
+) -> tuple[dict, dict[str, pd.Series], tuple[pd.Timestamp, pd.Timestamp]]:
+    """Score every default model under purged walk-forward CV and a leaky shuffled K-fold."""
+    splitter = PurgedWalkForward(n_splits, min_train_dates, embargo_days)
+    purged_splits = list(splitter.split(ds.dates, ds.label_end))
+    leaky_splits = list(leaky_kfold(ds.dates, n_splits))
+    overlap = max(horizon // sample_every, 1)
+    periods_per_year = 252 / horizon
+
+    results, ic_series = {}, {}
+    for name, model in default_models().items():
+        logger.info("Evaluating %s", name)
+        purged = cross_validate(model, ds.X, ds.y, purged_splits, overlap)
+        leaky = cross_validate(model, ds.X, ds.y, leaky_splits, overlap)
+        ls = purged.long_short.iloc[::overlap]
+        results[name] = {
+            "purged_walk_forward": purged.summary,
+            "long_short_ann_return": round(float(ls.mean() * periods_per_year), 4),
+            "leaky_shuffled_kfold_ic_mean": leaky.summary["ic_mean"],
+        }
+        ic_series[name] = purged.ic
+
+    test_dates = ds.dates[np.concatenate([t for _, t in purged_splits])]
+    return results, ic_series, (test_dates.min(), test_dates.max())
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="ML alpha with purged time-series CV")
     parser.add_argument("--config", default="config/watchlist.yaml")
@@ -69,26 +102,10 @@ def main() -> None:
         len(ds.X), len(dates), dates.min().date(), dates.max().date(), ds.X.shape[1],
     )
 
-    splitter = PurgedWalkForward(args.splits, args.min_train_dates, args.embargo_days)
-    purged_splits = list(splitter.split(ds.dates, ds.label_end))
-    leaky_splits = list(leaky_kfold(ds.dates, args.splits))
-    overlap = max(args.horizon // args.sample_every, 1)
-    periods_per_year = 252 / args.horizon
+    results, ic_series, test_period = evaluate_models(
+        ds, args.horizon, args.sample_every, args.splits, args.min_train_dates, args.embargo_days
+    )
 
-    results, ic_series = {}, {}
-    for name, model in default_models().items():
-        logger.info("Evaluating %s", name)
-        purged = cross_validate(model, ds.X, ds.y, purged_splits, overlap)
-        leaky = cross_validate(model, ds.X, ds.y, leaky_splits, overlap)
-        ls = purged.long_short.iloc[::overlap]
-        results[name] = {
-            "purged_walk_forward": purged.summary,
-            "long_short_ann_return": round(float(ls.mean() * periods_per_year), 4),
-            "leaky_shuffled_kfold_ic_mean": leaky.summary["ic_mean"],
-        }
-        ic_series[name] = purged.ic
-
-    test_dates = ds.dates[[i for _, t in purged_splits for i in t]]
     payload = {
         "universe": panel.symbols,
         "samples": len(ds.X),
@@ -100,7 +117,7 @@ def main() -> None:
             "min_train_dates": args.min_train_dates,
             "embargo_days": args.embargo_days,
         },
-        "out_of_sample_period": [str(test_dates.min().date()), str(test_dates.max().date())],
+        "out_of_sample_period": [str(d.date()) for d in test_period],
         "models": results,
         "ridge_coefficients_full_sample": {
             k: round(float(v), 5) for k, v in ridge_coefficients(

@@ -77,3 +77,10 @@ def build_dataset(panel: PricePanel, horizon: int = 21, sample_every: int = 5) -
     X, y = data.drop(columns="target"), data["target"]
     ends = label_end.reindex(X.index.get_level_values("date"))
     return Dataset(X=X, y=y, label_end=pd.Series(ends.to_numpy(), index=X.index, name="label_end"))
+
+
+def latest_features(panel: PricePanel) -> pd.DataFrame:
+    """Feature rows for the most recent date (no label yet), indexed by symbol."""
+    feats = {name: cross_sectional_rank(f) for name, f in raw_features(panel).items()}
+    last = panel.close.index[-1]
+    return pd.DataFrame({name: f.loc[last] for name, f in feats.items()}).dropna()

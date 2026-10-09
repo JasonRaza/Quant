@@ -129,3 +129,24 @@ def test_no_duplicate_features_after_ranking():
     corr = X.corr().abs().to_numpy(copy=True)
     np.fill_diagonal(corr, 0)
     assert corr.max() < 0.999
+
+
+def test_latest_features_match_training_columns():
+    from ml_alpha.features import latest_features
+
+    panel = make_panel()
+    latest = latest_features(panel)
+    assert list(latest.columns) == list(build_dataset(panel).X.columns)
+    assert sorted(latest.index) == SYMBOLS
+
+
+def test_evaluate_models_reports_all_models():
+    from ml_alpha.cli import evaluate_models
+
+    ds = build_dataset(make_panel(), horizon=21, sample_every=5)
+    results, ic_series, (start, end) = evaluate_models(ds, n_splits=3, min_train_dates=30)
+    assert set(results) == set(default_models())
+    assert start < end
+    for name, r in results.items():
+        assert r["purged_walk_forward"]["n"] > 0, name
+        assert not ic_series[name].empty
