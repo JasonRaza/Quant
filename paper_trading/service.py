@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,11 +36,16 @@ class Settings:
 
     @classmethod
     def from_config(cls, config_path: str = "config/watchlist.yaml") -> "Settings":
+        """Load from the watchlist config; QUANT_DATA_DIR / QUANT_PAPER_DB override paths."""
         cfg = load_yaml(resolve_path(config_path))
         benchmark = cfg.get("benchmark", "SPY")
+        data_dir = os.environ.get("QUANT_DATA_DIR") or cfg.get("data_dir", "data/parquet")
+        paper_db = os.environ.get("QUANT_PAPER_DB") or cfg.get(
+            "paper_db", "data/paper_trading.sqlite"
+        )
         return cls(
-            data_dir=resolve_path(cfg.get("data_dir", "data/parquet")),
-            paper_db=resolve_path(cfg.get("paper_db", "data/paper_trading.sqlite")),
+            data_dir=resolve_path(data_dir),
+            paper_db=resolve_path(paper_db),
             universe=[s.upper() for s in cfg.get("symbols", []) if s.upper() != benchmark],
             benchmark=benchmark,
         )

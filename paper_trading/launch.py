@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 def main() -> None:
-    dashboard = Path(__file__).with_name("dashboard.py")
-    cmd = [sys.executable, "-m", "streamlit", "run", str(dashboard), *sys.argv[1:]]
+    app = Path(__file__).with_name("app.py")
+    cmd = [sys.executable, "-m", "streamlit", "run", str(app), *sys.argv[1:]]
     sys.exit(subprocess.call(cmd))
 
 

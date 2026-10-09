@@ -1,6 +1,6 @@
 """Streamlit dashboard: market data, backtests, factors, portfolios and the paper account.
 
-Run: quant-dashboard  (or: streamlit run paper_trading/dashboard.py)
+Rendered as the Lab page of paper_trading/app.py (run: quant-dashboard).
 """
 
 from __future__ import annotations
@@ -31,8 +31,6 @@ from portfolio.walkforward import (
     historical_max_sharpe,
     run_walkforward,
 )
-
-st.set_page_config(page_title="Quant Lab", page_icon="📈", layout="wide")
 
 STRATEGY_LABELS = {"dual_ma": "Dual moving average", "mean_reversion": "Pair mean reversion"}
 MODEL_LABELS = {
