@@ -5,7 +5,12 @@ import pandas as pd
 import pytest
 
 from backtester.engine import BacktestConfig, BacktestEngine
-from backtester.strategies import DualMovingAverageCrossover, MeanReversionPair, pair_spread_prices
+from backtester.strategies import (
+    DualMovingAverageCrossover,
+    MeanReversionPair,
+    Strategy,
+    pair_spread_prices,
+)
 
 
 def test_dual_ma_backtest_deterministic(synthetic_bars):
@@ -57,3 +62,52 @@ def test_mean_reversion_pair_backtest_runs():
     assert len(result.trades) > 0
     assert set(np.sign(result.positions.unique())) <= {-1.0, 0.0, 1.0}
     assert np.isfinite(result.metrics["final_equity"])
+
+
+class ConstantAfterFirstBar(Strategy):
+    """Flat on day 0, then a fixed signal for the rest of the test."""
+
+    def __init__(self, signal: float) -> None:
+        self.signal = signal
+
+    def generate_signals(self, prices: pd.DataFrame) -> pd.Series:
+        sig = pd.Series(self.signal, index=prices.index)
+        sig.iloc[0] = 0.0
+        return sig
+
+
+def flat_prices(n: int = 10, price: float = 100.0) -> pd.DataFrame:
+    return pd.DataFrame({"date": pd.bdate_range("2024-01-01", periods=n), "close": price})
+
+
+def test_costs_are_charged_once():
+    config = BacktestConfig(initial_capital=10_000, commission_bps=5, slippage_bps=5)
+    result = BacktestEngine(config).run(flat_prices(), ConstantAfterFirstBar(1.0))
+    # Buying at a flat price: equity drops by exactly one slippage and one commission.
+    assert result.equity.iloc[-1] == pytest.approx(10_000 / (1.0005 * 1.0005))
+    assert result.metrics["final_equity"] > 10_000 * (1 - 0.0011)
+
+
+def test_full_long_never_borrows_cash():
+    config = BacktestConfig(initial_capital=10_000, commission_bps=5, slippage_bps=5)
+    engine = BacktestEngine(config)
+    result = engine.run(flat_prices(), ConstantAfterFirstBar(1.0))
+    cash = result.equity - result.positions * 100.0
+    assert cash.min() >= -1e-9
+
+
+def test_trades_only_on_signal_changes(synthetic_bars):
+    prices = synthetic_bars.drop(columns=["symbol"])
+    strategy = DualMovingAverageCrossover(fast=2, slow=4)
+    result = BacktestEngine().run(prices, strategy)
+    signal = strategy.generate_signals(prices.set_index("date"))
+    assert len(result.trades) == int((signal.diff().fillna(signal) != 0).sum())
+
+
+def test_zero_cost_long_matches_buy_and_hold_after_entry():
+    prices = flat_prices(6)
+    prices["close"] = [100.0, 100.0, 110.0, 99.0, 120.0, 130.0]
+    config = BacktestConfig(initial_capital=1_000, commission_bps=0, slippage_bps=0)
+    result = BacktestEngine(config).run(prices, ConstantAfterFirstBar(1.0))
+    assert result.equity.iloc[-1] == pytest.approx(1_300.0)
+    assert len(result.trades) == 1

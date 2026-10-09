@@ -49,35 +49,46 @@ class BacktestEngine:
 
         cash = self.config.initial_capital
         shares = 0.0
+        prev_signal = 0.0
         equity_vals = []
         position_vals = []
         trade_rows = []
 
-        cost_rate = (self.config.commission_bps + self.config.slippage_bps) / 10_000
+        slippage = self.config.slippage_bps / 10_000
+        commission = self.config.commission_bps / 10_000
 
         for dt in df.index:
             price = float(close.loc[dt])
             target_signal = float(signals.loc[dt])
-            equity = cash + shares * price
-            target_value = equity * target_signal
-            target_shares = target_value / price if price > 0 else 0.0
-            delta_shares = target_shares - shares
 
-            if abs(delta_shares) > 1e-9:
-                trade_price = price * (1 + cost_rate * (1 if delta_shares > 0 else -1))
-                trade_value = delta_shares * trade_price
-                cost = abs(trade_value) * cost_rate
-                cash -= trade_value + cost
-                shares += delta_shares
-                trade_rows.append(
-                    {
-                        "date": dt,
-                        "shares": delta_shares,
-                        "price": trade_price,
-                        "trade_value": trade_value,
-                        "cost": cost,
-                    }
-                )
+            # Trade only when the signal changes; otherwise the position is held.
+            if target_signal != prev_signal and price > 0:
+                equity = cash + shares * price
+                if target_signal > 0:
+                    # Size longs net of slippage and commission so cash doesn't go negative.
+                    all_in_price = price * (1 + slippage) * (1 + commission)
+                    target_shares = equity * target_signal / all_in_price
+                else:
+                    target_shares = equity * target_signal / price
+                delta_shares = target_shares - shares
+
+                if abs(delta_shares) > 1e-9:
+                    # Slippage worsens the fill price; commission is charged once on notional.
+                    fill_price = price * (1 + slippage if delta_shares > 0 else 1 - slippage)
+                    trade_value = delta_shares * fill_price
+                    fee = abs(trade_value) * commission
+                    cash -= trade_value + fee
+                    shares += delta_shares
+                    trade_rows.append(
+                        {
+                            "date": dt,
+                            "shares": delta_shares,
+                            "price": fill_price,
+                            "trade_value": trade_value,
+                            "cost": fee + abs(delta_shares) * price * slippage,
+                        }
+                    )
+            prev_signal = target_signal
 
             equity = cash + shares * price
             equity_vals.append(equity)
