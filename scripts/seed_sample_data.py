@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -37,15 +38,30 @@ def generate_sample_prices(symbol: str = "SPY", days: int = 504) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
-def seed_sample_data(data_dir: str | Path | None = None) -> list[str]:
+def seed_sample_data(data_dir: str | Path | None = None, force: bool = False) -> list[str]:
+    """Write synthetic bars, skipping symbols that already have data.
+
+    Overwriting fetched data would leave the fetch metadata pointing at the old
+    last_date, so the next incremental fetch would append live bars onto
+    synthetic history. Use force=True only on a throwaway data directory.
+    """
     root = project_root()
     store = ParquetStore(data_dir or root / "data" / "parquet")
-    symbols = ["SPY", "KO", "PEP"]
-    for sym in symbols:
+    seeded = []
+    for sym in ["SPY", "KO", "PEP"]:
+        if store.symbol_path(sym).exists() and not force:
+            continue
         store.save(sym, generate_sample_prices(sym))
-    return symbols
+        seeded.append(sym)
+    return seeded
 
 
 if __name__ == "__main__":
-    seeded = seed_sample_data()
-    print(f"Seeded sample data for: {', '.join(seeded)}")
+    parser = argparse.ArgumentParser(description="Seed synthetic OHLCV for offline demos")
+    parser.add_argument("--force", action="store_true", help="Overwrite existing symbol files")
+    args = parser.parse_args()
+    seeded = seed_sample_data(force=args.force)
+    if seeded:
+        print(f"Seeded sample data for: {', '.join(seeded)}")
+    else:
+        print("All sample symbols already have data; nothing seeded (use --force to overwrite)")
