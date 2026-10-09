@@ -1,6 +1,6 @@
 # Quant Finance Portfolio (Python)
 
-A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **All six projects are implemented.**
+A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **All six projects are implemented**, and the web app includes an interactive 13-chapter tutorial that teaches the whole stack from zero.
 
 ## Architecture
 
@@ -52,7 +52,7 @@ quant-optimize --exclude SPY
 # ML alpha: purged walk-forward CV vs leaky CV
 quant-ml --exclude SPY
 
-# Dashboard (http://localhost:8501) and paper trading API (http://127.0.0.1:8000/docs)
+# Web app: interactive tutorial + research dashboard (http://localhost:8501) and paper trading API (http://127.0.0.1:8000/docs)
 quant-dashboard
 quant-paper-api
 
@@ -246,16 +246,38 @@ What this shows:
 - Hyperparameters are fixed, not tuned. Tuning would need a nested purged CV to avoid a new layer of leakage.
 - Price/volume features only; no fundamentals, sentiment or alternative data
 
+## Interactive tutorial
+
+`quant-dashboard` opens a web app whose **Learn** section is a beginner tutorial: no prior knowledge of trading, statistics or ML assumed. Every chapter mixes plain-English explanations with interactive experiments on the real data and real project code, plus quizzes, takeaways and progress tracking.
+
+| # | Chapter | Hands-on experiments |
+|---|---------|----------------------|
+| 0 | Start here | What $1,000 in each stock became, by start year |
+| 1 | Markets and prices | Live candlestick + volume charts |
+| 2 | Returns and risk | Invest in the past, the recovery problem, volatility histograms, underwater charts |
+| 3 | Comparing investments | Risk/return map, correlation heatmap, beta regression |
+| 4 | Market data | Split vs adjusted prices, data health check, survivorship-bias simulation |
+| 5 | Strategies and backtesting | Moving averages, the crossover rule step by step, trade log, cost sensitivity |
+| 6 | Backtesting pitfalls | Lookahead bias, in- vs out-of-sample grid search, random-strategy lottery |
+| 7 | Mean reversion and pairs | Z-score bands, pairs backtest, rolling correlation |
+| 8 | Factors | Today's rankings, IC on a single date, real vs random factors, quantile staircase |
+| 9 | Building portfolios | Two-stock diversification, efficient frontier, weight instability, walk-forward |
+| 10 | Machine learning | Training data, overfitting vs tree depth, purged vs leaky validation |
+| 11 | From research to trading | Order types, a private sandbox paper account, production checklist |
+| 12 | Glossary and final quiz | Searchable glossary, 8-question final quiz |
+
+The **Lab** section is the research dashboard described below. Tutorial code lives in `paper_trading/tutorial/`; `tests/test_tutorial.py` renders every chapter on synthetic data.
+
 ## Project 6: Paper Trading Dashboard
 
 **Resume hook:** *Shipped a Streamlit research dashboard and a FastAPI paper-trading service backed by a SQLite broker.*
 
 ```bash
-quant-dashboard     # Streamlit UI on http://localhost:8501
+quant-dashboard     # Streamlit app (tutorial + dashboard) on http://localhost:8501
 quant-paper-api     # REST API, interactive docs on http://127.0.0.1:8000/docs
 ```
 
-**Dashboard tabs** (`paper_trading/dashboard.py`):
+**Dashboard tabs** (Lab page, `paper_trading/dashboard.py`):
 - **Market**: price chart with moving averages for any watchlist symbol
 - **Backtest**: dual-MA or pair mean reversion with sliders for windows and costs, metrics vs buy & hold
 - **Factors**: rank IC table, cumulative IC chart and latest composite screen, with horizon/quantile controls
@@ -287,7 +309,7 @@ Quant/
 ├── factors/             # P3: factor library, IC analysis, screener
 ├── portfolio/           # P4: estimators, optimizers, walk-forward
 ├── ml_alpha/            # P5: features, purged CV, models
-├── paper_trading/       # P6: broker, API, Streamlit dashboard
+├── paper_trading/       # P6: broker, API, Streamlit app + tutorial/
 ├── shared/              # types, config, db utils
 ├── scripts/seed_sample_data.py
 ├── tests/
@@ -315,6 +337,7 @@ make lint      # ruff
 - Built Parquet-based equity ETL with idempotent daily updates, SQLite metadata, and pytest coverage on parsers and pipeline orchestration.
 - Implemented event-driven backtester with dual-MA strategy, 5 bps transaction costs, and buy-and-hold benchmark comparison.
 - Built ML return-prediction baselines (ridge, gradient boosting) with purged walk-forward CV and showed a shuffled K-fold inflates out-of-sample IC from ~0 to 0.24.
+- Wrote an interactive 13-chapter tutorial (Streamlit) that teaches markets, backtesting pitfalls, factors, portfolio construction and ML leakage to complete beginners using live experiments on real data.
 - Shipped a Streamlit dashboard and FastAPI service over a SQLite paper broker that rebalances a live account to any research allocator.
 - Built a long-only constrained optimizer (min-variance, risk parity, max-Sharpe, factor mean-variance) with Ledoit-Wolf covariance and compared allocators in a walk-forward backtest net of transaction costs.
 - Built a cross-sectional factor screener (momentum, reversal, low-vol, liquidity) with rank-IC and quantile-spread evaluation on non-overlapping horizons and lookahead-bias tests.
