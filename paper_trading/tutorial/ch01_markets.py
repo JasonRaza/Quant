@@ -24,7 +24,8 @@ COMPANIES = {
 }
 
 
-def candlestick(df: pd.DataFrame) -> alt.Chart:
+def candlestick(df: pd.DataFrame) -> tuple[alt.Chart, alt.Chart]:
+    """Price candles and volume bars, drawn as two charts so each fits the page width."""
     data = df.reset_index()
     base = alt.Chart(data).encode(
         x=alt.X("date:T", title=None),
@@ -50,7 +51,7 @@ def candlestick(df: pd.DataFrame) -> alt.Chart:
         .encode(y=alt.Y("volume:Q", title="Volume (shares)"))
         .properties(height=110)
     )
-    return alt.vconcat(price, volume).resolve_scale(x="shared")
+    return price, volume
 
 
 def render() -> None:
@@ -124,7 +125,9 @@ opened and **red** when it closed lower.
             "How much history?", options=[1, 3, 6, 12], value=3, format_func=lambda m: f"{m} months"
         )
         window = df[df.index >= df.index[-1] - pd.DateOffset(months=months)]
-        st.altair_chart(candlestick(window), width="stretch")
+        price_chart, volume_chart = candlestick(window)
+        st.altair_chart(price_chart, width="stretch")
+        st.altair_chart(volume_chart, width="stretch")
 
         last = window.iloc[-1]
         st.markdown(f"**The most recent bar ({window.index[-1].date()})**")

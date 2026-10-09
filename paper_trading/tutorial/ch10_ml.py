@@ -169,8 +169,10 @@ test period, plus a small safety gap ("embargo").
     with c.try_it("Honest vs leaky evaluation"):
         with st.spinner("Training each model under both validation schemes..."):
             comp = model_comparison()
-        long = comp.rename_axis("model").reset_index().melt(
-            "model", var_name="validation", value_name="IC"
+        long = (
+            comp.rename_axis("model")
+            .reset_index()
+            .melt("model", var_name="validation", value_name="IC")
         )
         chart = (
             alt.Chart(long)

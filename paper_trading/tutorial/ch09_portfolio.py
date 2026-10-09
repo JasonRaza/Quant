@@ -203,8 +203,10 @@ in this project:
             cons = Constraints(max_weight=0.5)
             w1, w2 = trailing_max_sharpe(r1, cons), trailing_max_sharpe(r2, cons)
             df = pd.DataFrame({str(y1): w1, str(y1 + 1): w2})
-            long = df.rename_axis("ticker").reset_index().melt(
-                "ticker", var_name="year", value_name="weight"
+            long = (
+                df.rename_axis("ticker")
+                .reset_index()
+                .melt("ticker", var_name="year", value_name="weight")
             )
             chart = (
                 alt.Chart(long)

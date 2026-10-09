@@ -11,12 +11,11 @@ import streamlit as st
 
 from paper_trading.tutorial import build_pages
 
-st.set_page_config(page_title="Quant Lab", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Quant Lab", layout="wide")
 
 lab = st.Page(
     str(Path(__file__).with_name("dashboard.py")),
     title="Research dashboard",
-    icon="🔬",
     url_path="lab",
 )
 st.navigation({"Learn": build_pages(), "Lab": [lab]}, expanded=True).run()

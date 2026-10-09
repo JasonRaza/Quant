@@ -91,7 +91,7 @@ both roles.
     st.markdown(
         """
 - **Learn** (left sidebar): this tutorial, 12 chapters that build on each other.
-  Each one has explanations, interactive experiments marked 🧪, a short quiz, and a
+  Each one has explanations, interactive "Try it" experiments, a short quiz, and a
   "What to remember" box. Do them in order the first time.
 - **Lab**: the full research dashboard. Once you've read a chapter, the matching Lab
   tab lets you play with the real tools without hand-holding.
@@ -103,7 +103,7 @@ Roadmap:
         [
             {
                 "#": ch.number,
-                "Chapter": f"{ch.icon} {ch.title}",
+                "Chapter": ch.title,
                 "You'll learn": ch.summary,
                 "Minutes": ch.minutes,
             }

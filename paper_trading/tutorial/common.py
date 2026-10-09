@@ -18,7 +18,6 @@ class Chapter:
     slug: str
     number: int
     title: str
-    icon: str
     summary: str
     minutes: int
     render: Callable[[], None]
@@ -77,7 +76,7 @@ def chapter_header(slug: str) -> Chapter:
         f"Chapter {ch.number} of {len(CHAPTERS) - 1} · about {ch.minutes} min · "
         f"{len(done)}/{len(CHAPTERS)} chapters completed"
     )
-    st.title(f"{ch.icon} {ch.title}")
+    st.title(ch.title)
     st.markdown(f"*{ch.summary}*")
     st.progress(len(done) / len(CHAPTERS))
     return ch
@@ -88,30 +87,30 @@ def section(title: str) -> None:
     st.header(title)
 
 
-def try_it(title: str = "Try it yourself"):
+def try_it(title: str = "experiment"):
     """Bordered box for interactive experiments."""
     box = st.container(border=True)
-    box.markdown(f"#### 🧪 {esc(title)}")
+    box.markdown(f"#### Try it: {esc(title)}")
     return box
 
 
 def key_idea(text: str) -> None:
-    st.info(f"**Key idea.** {text}", icon="💡")
+    st.info(f"**Key idea.** {text}")
 
 
 def warning_box(text: str) -> None:
-    st.warning(text, icon="⚠️")
+    st.warning(text)
 
 
 def takeaways(points: Sequence[str]) -> None:
     with st.container(border=True):
-        st.markdown("#### ✅ What to remember")
+        st.markdown("#### What to remember")
         st.markdown("\n".join(f"- {p}" for p in points))
 
 
 def term(word: str, definition: str) -> None:
     """Inline glossary entry rendered as a small expander."""
-    with st.expander(f"📖 **{word}**"):
+    with st.expander(f"**{word}**"):
         st.markdown(definition)
 
 
@@ -124,7 +123,7 @@ def quiz(
 ) -> Optional[bool]:
     """Multiple-choice question; returns True/False once answered, None before."""
     with st.container(border=True):
-        st.markdown(f"**❓ {question}**")
+        st.markdown(f"**Question.** {question}")
         choice = st.radio(
             question, options, index=None, key=f"quiz_{key}", label_visibility="collapsed"
         )
@@ -157,7 +156,7 @@ def chapter_footer(slug: str, quiz_keys: Sequence[str] = ()) -> None:
     if prev_ch and prev_ch.slug in PAGES:
         left.page_link(PAGES[prev_ch.slug], label=f"← {prev_ch.title}")
     if slug in completed():
-        mid.success("Chapter completed", icon="🎉")
+        mid.success("Chapter completed")
     elif quiz_keys:
         mid.caption("Answer the quiz questions to complete this chapter.")
     if next_ch and next_ch.slug in PAGES:
