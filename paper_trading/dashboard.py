@@ -19,6 +19,9 @@ from factors.analysis import composite_score
 from factors.cli import evaluate_factors, latest_screen
 from factors.library import FACTORS, compute_factors
 from factors.panel import build_panel
+from ml_alpha.cli import evaluate_models
+from ml_alpha.features import build_dataset, latest_features
+from ml_alpha.models import default_models, ridge_coefficients
 from paper_trading.service import ALLOCATION_METHODS, Settings, make_broker, target_weights
 from portfolio.estimators import daily_returns
 from portfolio.optimizer import Constraints
@@ -32,6 +35,11 @@ from portfolio.walkforward import (
 st.set_page_config(page_title="Quant Lab", page_icon="📈", layout="wide")
 
 STRATEGY_LABELS = {"dual_ma": "Dual moving average", "mean_reversion": "Pair mean reversion"}
+MODEL_LABELS = {
+    "momentum_baseline": "Momentum baseline",
+    "ridge": "Ridge",
+    "gradient_boosting": "Gradient boosting",
+}
 METHOD_LABELS = {
     "equal_weight": "Equal weight",
     "min_variance": "Min variance",
@@ -109,6 +117,38 @@ def run_portfolio_walkforward(universe: tuple, max_weight: float, cost_bps: floa
     return pd.DataFrame(metrics).T, pd.DataFrame(curves)
 
 
+@st.cache_data(show_spinner=False)
+def run_ml(universe: tuple, horizon: int, n_splits: int, embargo: int, _version: float):
+    panel = build_panel(ParquetStore(settings().data_dir), list(universe))
+    ds = build_dataset(panel, horizon=horizon, sample_every=5)
+    results, ic_series, period = evaluate_models(ds, horizon, 5, n_splits, 52, embargo)
+    table = pd.DataFrame(
+        {
+            MODEL_LABELS[name]: {
+                **r["purged_walk_forward"],
+                "long_short_ann_return": r["long_short_ann_return"],
+                "leaky_ic_mean": r["leaky_shuffled_kfold_ic_mean"],
+            }
+            for name, r in results.items()
+        }
+    ).T
+    cum_ic = pd.DataFrame({MODEL_LABELS[k]: v.cumsum() for k, v in ic_series.items()})
+    coefs = ridge_coefficients(default_models()["ridge"], ds.X, ds.y)
+
+    # Today's ranking: fit each model on every labelled sample, score the latest features.
+    latest = latest_features(panel)
+    preds = pd.DataFrame(
+        {
+            MODEL_LABELS[name]: model.fit(ds.X, ds.y).predict(latest[ds.X.columns])
+            for name, model in default_models().items()
+        },
+        index=latest.index,
+    )
+    meta = {"samples": len(ds.X), "features": ds.X.shape[1], "period": period,
+            "as_of": panel.close.index[-1]}
+    return table, cum_ic, coefs, preds, meta
+
+
 @st.cache_data
 def current_weights(method: str, max_weight: float, _version: float) -> pd.Series:
     return target_weights(settings(), method, max_weight)
@@ -124,8 +164,8 @@ st.caption(
     "data from the local Parquet store (refresh with `quant-fetch`)"
 )
 
-tab_market, tab_bt, tab_factors, tab_port, tab_paper = st.tabs(
-    ["Market", "Backtest", "Factors", "Portfolio", "Paper trading"]
+tab_market, tab_bt, tab_factors, tab_port, tab_ml, tab_paper = st.tabs(
+    ["Market", "Backtest", "Factors", "Portfolio", "ML alpha", "Paper trading"]
 )
 
 with tab_market:
@@ -227,6 +267,75 @@ with tab_port:
         )
     st.subheader(f"Current weights: {METHOD_LABELS[method]}")
     st.bar_chart(current_weights(method, max_w, version), height=280)
+
+with tab_ml:
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        ml_horizon = st.select_slider("Forward horizon (days)", [5, 10, 21, 63], value=21,
+                                      key="ml_horizon")
+        ml_splits = st.slider("Walk-forward splits", 2, 8, 5)
+        ml_embargo = st.slider("Embargo (days)", 0, 30, 5)
+        st.caption(
+            "Purged CV trains only on the past and drops samples whose label window "
+            "reaches into the test period. The leaky column scores the same models with "
+            "a shuffled K-fold that ignores time."
+        )
+    with st.spinner("Training models across folds..."):
+        ml_table, ml_cum_ic, ml_coefs, ml_preds, ml_meta = run_ml(
+            tuple(cfg.universe), ml_horizon, ml_splits, ml_embargo, version
+        )
+    with col2:
+        start, end = ml_meta["period"]
+        st.subheader("Out-of-sample results")
+        st.caption(
+            f"{ml_meta['samples']:,} samples · {ml_meta['features']} features · "
+            f"tested {start.date()} to {end.date()}"
+        )
+        cols = ["ic_mean", "t_stat", "hit_rate", "long_short_ann_return", "leaky_ic_mean"]
+        st.dataframe(
+            ml_table[cols].rename(columns={
+                "ic_mean": "IC (purged)", "t_stat": "t-stat", "hit_rate": "Hit rate",
+                "long_short_ann_return": "Long-short (ann.)", "leaky_ic_mean": "IC (leaky CV)",
+            }).style.format({
+                "IC (purged)": "{:.3f}", "t-stat": "{:.2f}", "Hit rate": "{:.0%}",
+                "Long-short (ann.)": "{:+.1%}", "IC (leaky CV)": "{:.3f}",
+            }),
+            width="stretch",
+        )
+        st.subheader("Purged vs leaky CV")
+        st.bar_chart(
+            ml_table[["ic_mean", "leaky_ic_mean"]].rename(
+                columns={"ic_mean": "Purged walk-forward", "leaky_ic_mean": "Leaky shuffled K-fold"}
+            ),
+            stack=False,
+            height=260,
+        )
+        st.caption(
+            "The gap between the two bars is what leakage would add to a model's apparent skill."
+        )
+
+    left, right = st.columns(2)
+    with left:
+        st.subheader("Cumulative out-of-sample IC")
+        st.line_chart(ml_cum_ic, height=300)
+    with right:
+        st.subheader("Ridge coefficients (full sample)")
+        st.bar_chart(ml_coefs.rename("coefficient"), horizontal=True, height=300)
+
+    st.subheader(f"Today's ranking ({ml_meta['as_of'].date()})")
+    rank_model = st.selectbox("Rank by", list(ml_preds.columns), index=1)
+    ranking = ml_preds.sort_values(rank_model, ascending=False)
+    ranking.insert(0, "rank", range(1, len(ranking) + 1))
+    st.dataframe(
+        ranking,
+        width="stretch",
+        column_config={c: st.column_config.NumberColumn(format="%.4f") for c in ml_preds.columns},
+    )
+    st.caption(
+        f"Ridge and gradient boosting scores are predicted {ml_horizon}-day returns relative "
+        "to the universe average; the baseline score is the momentum rank (-0.5 to 0.5). "
+        "No model here is statistically significant, so treat the ranking as a demo."
+    )
 
 with tab_paper:
     broker = make_broker(cfg)

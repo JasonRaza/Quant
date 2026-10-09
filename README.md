@@ -224,7 +224,7 @@ What this shows:
 quant-ml --exclude SPY --horizon 21 --splits 5 --embargo-days 5
 ```
 
-Outputs: `reports/ml_report.json`, `reports/ml_oos_ic.png`
+Outputs: `reports/ml_report.json`, `reports/ml_oos_ic.png`. The same evaluation is interactive in the dashboard's **ML alpha** tab.
 
 ### Results (9 large caps, out-of-sample Jan 2022 – Sep 2026)
 
@@ -260,6 +260,7 @@ quant-paper-api     # REST API, interactive docs on http://127.0.0.1:8000/docs
 - **Backtest**: dual-MA or pair mean reversion with sliders for windows and costs, metrics vs buy & hold
 - **Factors**: rank IC table, cumulative IC chart and latest composite screen, with horizon/quantile controls
 - **Portfolio**: walk-forward comparison of all allocators, with max-weight and cost sliders, plus today's weights
+- **ML alpha**: purged vs leaky CV comparison, out-of-sample IC table and chart, ridge coefficients, today's model rankings (horizon, splits and embargo sliders)
 - **Paper trading**: account equity and P&L, order ticket, one-click rebalance to any allocator, positions, order history, reset
 
 **Paper broker** (`paper_trading/broker.py`):
