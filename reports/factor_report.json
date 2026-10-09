@@ -4,135 +4,155 @@
     "AMZN",
     "GOOGL",
     "JPM",
+    "KO",
     "META",
     "MSFT",
-    "NVDA"
+    "NVDA",
+    "PEP"
   ],
   "horizon_days": 21,
   "quantiles": 3,
   "factors": {
     "momentum_12_1": {
-      "ic_mean": 0.0038,
-      "ic_std": 0.4232,
-      "ic_ir": 0.0091,
-      "t_stat": 0.0733,
-      "hit_rate": 0.5538,
-      "n": 65,
+      "ic_mean": 0.0446,
+      "ic_std": 0.3948,
+      "ic_ir": 0.113,
+      "t_stat": 0.9318,
+      "hit_rate": 0.5882,
+      "n": 68,
       "quantile_mean_return": {
-        "q1": 0.024,
-        "q2": 0.0144,
-        "q3": 0.0291
+        "q1": 0.0217,
+        "q2": 0.0129,
+        "q3": 0.024
       },
-      "long_short_ann_return": 0.0615
+      "long_short_ann_return": 0.0269
     },
     "reversal_1m": {
-      "ic_mean": 0.0334,
-      "ic_std": 0.3674,
-      "ic_ir": 0.0908,
-      "t_stat": 0.7917,
-      "hit_rate": 0.5395,
-      "n": 76,
+      "ic_mean": 0.0044,
+      "ic_std": 0.3699,
+      "ic_ir": 0.012,
+      "t_stat": 0.1064,
+      "hit_rate": 0.519,
+      "n": 79,
       "quantile_mean_return": {
-        "q1": 0.022,
-        "q2": 0.025,
-        "q3": 0.0301
+        "q1": 0.017,
+        "q2": 0.0216,
+        "q3": 0.0251
       },
-      "long_short_ann_return": 0.0976
+      "long_short_ann_return": 0.0975
     },
     "low_vol": {
-      "ic_mean": -0.0203,
-      "ic_std": 0.4698,
-      "ic_ir": -0.0431,
-      "t_stat": -0.3712,
-      "hit_rate": 0.527,
-      "n": 74,
+      "ic_mean": -0.0554,
+      "ic_std": 0.495,
+      "ic_ir": -0.1119,
+      "t_stat": -0.9823,
+      "hit_rate": 0.4675,
+      "n": 77,
       "quantile_mean_return": {
-        "q1": 0.0317,
-        "q2": 0.0275,
-        "q3": 0.023
+        "q1": 0.0322,
+        "q2": 0.0241,
+        "q3": 0.0156
       },
-      "long_short_ann_return": -0.1048
+      "long_short_ann_return": -0.2002
     },
     "liquidity": {
-      "ic_mean": -0.0372,
-      "ic_std": 0.4696,
-      "ic_ir": -0.0791,
-      "t_stat": -0.6808,
-      "hit_rate": 0.473,
-      "n": 74,
+      "ic_mean": 0.0472,
+      "ic_std": 0.5018,
+      "ic_ir": 0.094,
+      "t_stat": 0.8251,
+      "hit_rate": 0.4675,
+      "n": 77,
       "quantile_mean_return": {
-        "q1": 0.0292,
-        "q2": 0.0198,
-        "q3": 0.0345
+        "q1": 0.0136,
+        "q2": 0.0298,
+        "q3": 0.0285
       },
-      "long_short_ann_return": 0.0631
+      "long_short_ann_return": 0.1795
     }
   },
   "screen": {
-    "as_of": "2026-06-12",
+    "as_of": "2026-10-07",
     "rankings": [
       {
         "rank": 1,
-        "symbol": "GOOGL",
-        "composite": 0.5212,
-        "momentum_12_1": 1.2753,
-        "reversal_1m": 0.1061,
-        "low_vol": -0.3588,
-        "liquidity": 23.0547
+        "symbol": "KO",
+        "composite": 0.3748,
+        "momentum_12_1": 0.3642,
+        "reversal_1m": 0.023,
+        "low_vol": -0.1975,
+        "liquidity": 21.0405
       },
       {
         "rank": 2,
-        "symbol": "NVDA",
-        "composite": 0.3641,
-        "momentum_12_1": 0.5814,
-        "reversal_1m": 0.0903,
-        "low_vol": -0.4006,
-        "liquidity": 24.2236
+        "symbol": "JPM",
+        "composite": 0.3643,
+        "momentum_12_1": 0.1487,
+        "reversal_1m": 0.063,
+        "low_vol": -0.1779,
+        "liquidity": 21.6501
       },
       {
         "rank": 3,
         "symbol": "AAPL",
-        "composite": 0.312,
-        "momentum_12_1": 0.5095,
-        "reversal_1m": 0.0259,
-        "low_vol": -0.2306,
-        "liquidity": 23.2929
+        "composite": 0.2913,
+        "momentum_12_1": 0.2354,
+        "reversal_1m": -0.0647,
+        "low_vol": -0.2665,
+        "liquidity": 23.4073
       },
       {
         "rank": 4,
-        "symbol": "AMZN",
-        "composite": 0.252,
-        "momentum_12_1": 0.267,
-        "reversal_1m": 0.1169,
-        "low_vol": -0.3019,
-        "liquidity": 23.117
+        "symbol": "GOOGL",
+        "composite": 0.2817,
+        "momentum_12_1": 0.3538,
+        "reversal_1m": -0.0359,
+        "low_vol": -0.3404,
+        "liquidity": 22.9565
       },
       {
         "rank": 5,
-        "symbol": "MSFT",
-        "composite": -0.2319,
-        "momentum_12_1": -0.1376,
-        "reversal_1m": 0.0336,
-        "low_vol": -0.3149,
-        "liquidity": 23.3803
+        "symbol": "NVDA",
+        "composite": 0.1709,
+        "momentum_12_1": 0.2168,
+        "reversal_1m": -0.0532,
+        "low_vol": -0.3804,
+        "liquidity": 23.9943
       },
       {
         "rank": 6,
-        "symbol": "META",
-        "composite": -0.4757,
-        "momentum_12_1": -0.1089,
-        "reversal_1m": 0.0805,
-        "low_vol": -0.4186,
-        "liquidity": 23.0664
+        "symbol": "PEP",
+        "composite": 0.1371,
+        "momentum_12_1": 0.0312,
+        "reversal_1m": 0.1063,
+        "low_vol": -0.1794,
+        "liquidity": 20.8071
       },
       {
         "rank": 7,
-        "symbol": "JPM",
-        "composite": -0.7417,
-        "momentum_12_1": 0.1415,
-        "reversal_1m": -0.0682,
-        "low_vol": -0.2206,
-        "liquidity": 21.717
+        "symbol": "AMZN",
+        "composite": -0.0651,
+        "momentum_12_1": 0.1633,
+        "reversal_1m": -0.0115,
+        "low_vol": -0.4123,
+        "liquidity": 23.0281
+      },
+      {
+        "rank": 8,
+        "symbol": "MSFT",
+        "composite": -0.4667,
+        "momentum_12_1": -0.0596,
+        "reversal_1m": -0.0725,
+        "low_vol": -0.3926,
+        "liquidity": 23.2895
+      },
+      {
+        "rank": 9,
+        "symbol": "META",
+        "composite": -1.0884,
+        "momentum_12_1": -0.142,
+        "reversal_1m": -0.1767,
+        "low_vol": -0.4709,
+        "liquidity": 23.2304
       }
     ]
   }

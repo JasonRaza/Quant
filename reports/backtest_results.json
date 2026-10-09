@@ -2,15 +2,15 @@
   "strategy": "dual_ma",
   "symbol": "SPY",
   "metrics": {
-    "total_return": 0.1239,
-    "sharpe": 0.6608,
-    "max_drawdown": -0.0145,
-    "win_rate": 0.5441,
-    "turnover": 100300.3,
-    "final_equity": 112391.79,
-    "benchmark_total_return": 0.1582,
-    "benchmark_sharpe": 0.7818,
-    "benchmark_max_drawdown": -0.0128
+    "total_return": 0.7836,
+    "sharpe": 0.7678,
+    "max_drawdown": -0.2893,
+    "win_rate": 0.5443,
+    "turnover": 3624518.32,
+    "final_equity": 178363.81,
+    "benchmark_total_return": 1.6311,
+    "benchmark_sharpe": 0.8169,
+    "benchmark_max_drawdown": -0.3372
   },
-  "trade_count": 5
+  "trade_count": 83
 }

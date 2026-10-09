@@ -24,3 +24,6 @@ Thumbs.db
 .env
 .idea/
 .vscode/
+
+# Unrelated project cloned into this folder
+odysseus/

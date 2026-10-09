@@ -16,7 +16,7 @@ backtest:
 	quant-backtest --strategy dual_ma --symbol SPY
 
 factors:
-	quant-factors --config config/watchlist.yaml --exclude SPY KO PEP
+	quant-factors --config config/watchlist.yaml --exclude SPY
 
 quality:
 	quant-quality --config config/watchlist.yaml

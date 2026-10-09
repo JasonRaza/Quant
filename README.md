@@ -34,7 +34,7 @@ flowchart LR
 # Install with backtest + dev dependencies
 pip install -e ".[backtest,dev]"
 
-# Option A: seed offline sample data (no network)
+# Option A: seed offline sample data (no network; skips symbols that already have data)
 python scripts/seed_sample_data.py
 
 # Option B: fetch live data from Yahoo Finance
@@ -44,7 +44,7 @@ quant-fetch --config config/watchlist.yaml
 quant-backtest --strategy dual_ma --symbol SPY
 
 # Factor research (IC report + latest screen)
-quant-factors --exclude SPY KO PEP
+quant-factors --exclude SPY
 
 # Data quality report
 quant-quality --config config/watchlist.yaml
@@ -102,18 +102,18 @@ quant-backtest --strategy mean_reversion --pair KO PEP
 
 Outputs: `reports/backtest_results.json`, `reports/equity_curve.png`
 
-## Results (sample data, dual-MA 20/50 on SPY)
+## Results (live data, dual-MA 20/50 on SPY)
 
-Run on ~2 years of synthetic SPY bars (`scripts/seed_sample_data.py`):
+Run on Yahoo Finance daily bars, Jan 2020 – Oct 2026 (`quant-fetch`):
 
 | Metric | Strategy | Buy & Hold |
 |--------|----------|------------|
-| Total return | 12.39% | 15.82% |
-| Sharpe (ann.) | 0.66 | 0.78 |
-| Max drawdown | -1.45% | -1.28% |
-| Trades | 5 | — |
+| Total return | 78.36% | 163.11% |
+| Sharpe (ann.) | 0.77 | 0.82 |
+| Max drawdown | -28.93% | -33.72% |
+| Trades | 83 | — |
 
-*Note: Synthetic data demonstrates the pipeline; re-run with live `quant-fetch` data for real-market results. Past performance does not guarantee future results.*
+The crossover cuts the drawdown a little but gives up about half of the buy-and-hold return after costs. That's a typical result for trend filters on a strongly trending index. *Past performance does not guarantee future results.*
 
 ![Equity curve](reports/equity_curve.png)
 
@@ -129,21 +129,21 @@ Run on ~2 years of synthetic SPY bars (`scripts/seed_sample_data.py`):
 - No lookahead: a test perturbs future prices and checks past factor values are unchanged
 
 ```bash
-quant-factors --exclude SPY KO PEP --horizon 21 --quantiles 3
+quant-factors --exclude SPY --horizon 21 --quantiles 3
 ```
 
 Outputs: `reports/factor_report.json`, `reports/factor_ic.png`
 
-### Results (7 large caps, 2020–2026, 21-day horizon)
+### Results (9 large caps, 2020–2026, 21-day horizon)
 
 | Factor | IC mean | t-stat | Hit rate |
 |--------|---------|--------|----------|
-| momentum_12_1 | 0.004 | 0.07 | 55% |
-| reversal_1m | 0.033 | 0.79 | 54% |
-| low_vol | -0.020 | -0.37 | 53% |
-| liquidity | -0.037 | -0.68 | 47% |
+| momentum_12_1 | 0.045 | 0.93 | 59% |
+| reversal_1m | 0.004 | 0.11 | 52% |
+| low_vol | -0.055 | -0.98 | 47% |
+| liquidity | 0.047 | 0.83 | 47% |
 
-None of the factors is statistically significant (|t| < 2). With only 7 names, each cross-section is very noisy, so treat this as a working pipeline, not as evidence of alpha.
+None of the factors is statistically significant (|t| < 2). With only 9 names, each cross-section is very noisy, so treat this as a working pipeline, not as evidence of alpha. Low-vol's negative IC matches the 2020–2026 period, when high-beta tech led the market.
 
 ![Cumulative IC](reports/factor_ic.png)
 
@@ -151,7 +151,6 @@ None of the factors is statistically significant (|t| < 2). With only 7 names, e
 
 - Tiny, survivor-biased universe (today's mega caps), so you need many more names for meaningful IC
 - Price/volume factors only; value and quality need fundamentals data
-- KO/PEP/SPY Parquet files currently mix synthetic seed bars with live data, so exclude them or re-fetch
 
 ## Repository layout
 
