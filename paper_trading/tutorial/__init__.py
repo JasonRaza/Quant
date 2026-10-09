@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import streamlit as st
 
-from paper_trading.tutorial import ch00_start, ch01_markets, ch02_returns_risk, ch03_compare
+from paper_trading.tutorial import (
+    ch00_start,
+    ch01_markets,
+    ch02_returns_risk,
+    ch03_compare,
+    ch04_data,
+    ch05_backtesting,
+    ch06_pitfalls,
+    ch07_pairs,
+)
 from paper_trading.tutorial.common import CHAPTERS, PAGES, Chapter
 
 _CHAPTERS = [
@@ -43,6 +52,42 @@ _CHAPTERS = [
         "Sharpe ratio, correlation, diversification and beta",
         15,
         ch03_compare.render,
+    ),
+    Chapter(
+        ch04_data.SLUG,
+        4,
+        "Market data",
+        "🗄️",
+        "Data pipelines, adjusted prices, data quality and survivorship bias",
+        15,
+        ch04_data.render,
+    ),
+    Chapter(
+        ch05_backtesting.SLUG,
+        5,
+        "Strategies and backtesting",
+        "⏪",
+        "Trading signals, moving averages and how a backtest engine works",
+        20,
+        ch05_backtesting.render,
+    ),
+    Chapter(
+        ch06_pitfalls.SLUG,
+        6,
+        "Backtesting pitfalls",
+        "🪤",
+        "Lookahead bias, overfitting and the multiple-testing trap",
+        20,
+        ch06_pitfalls.render,
+    ),
+    Chapter(
+        ch07_pairs.SLUG,
+        7,
+        "Mean reversion and pairs",
+        "🔁",
+        "Trend vs mean reversion, spreads, z-scores and market neutrality",
+        15,
+        ch07_pairs.render,
     ),
 ]
 

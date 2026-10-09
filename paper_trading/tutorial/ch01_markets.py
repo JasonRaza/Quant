@@ -134,10 +134,12 @@ opened and **red** when it closed lower.
             col.metric(field.capitalize(), fmt.format(last[field]))
         up = last["close"] >= last["open"]
         st.markdown(
-            f"That day {symbol} opened at **${last['open']:,.2f}** and closed at "
-            f"**${last['close']:,.2f}**, so the candle is **{'green' if up else 'red'}**. "
-            f"About **{last['volume'] / 1e6:,.1f} million** shares traded. Hover over the "
-            "chart to inspect any day."
+            c.esc(
+                f"That day {symbol} opened at **${last['open']:,.2f}** and closed at "
+                f"**${last['close']:,.2f}**, so the candle is **{'green' if up else 'red'}**. "
+                f"About **{last['volume'] / 1e6:,.1f} million** shares traded. Hover over the "
+                "chart to inspect any day."
+            )
         )
 
     c.section("Daily data is enough to start")

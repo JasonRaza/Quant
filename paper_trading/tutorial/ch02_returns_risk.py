@@ -18,7 +18,7 @@ def render() -> None:
     c.section("From prices to returns")
     st.markdown(
         r"""
-A price on its own says little: is $300 expensive? It depends on the stock. What
+A price on its own says little: is \$300 expensive? It depends on the stock. What
 investors care about is the **return**, the percentage change in value:
 
 $$\text{return} = \frac{\text{price}_\text{end}}{\text{price}_\text{start}} - 1$$

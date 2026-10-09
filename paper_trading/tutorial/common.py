@@ -91,7 +91,7 @@ def section(title: str) -> None:
 def try_it(title: str = "Try it yourself"):
     """Bordered box for interactive experiments."""
     box = st.container(border=True)
-    box.markdown(f"#### 🧪 {title}")
+    box.markdown(f"#### 🧪 {esc(title)}")
     return box
 
 
@@ -191,6 +191,11 @@ def sharpe(returns: pd.Series) -> float:
 
 def fmt_pct(x: float, signed: bool = False) -> str:
     return f"{x:+.1%}" if signed else f"{x:.1%}"
+
+
+def esc(text: str) -> str:
+    """Escape dollar signs so Streamlit markdown doesn't render them as LaTeX math."""
+    return text.replace("$", r"\$")
 
 
 def fmt_usd(x: float) -> str:

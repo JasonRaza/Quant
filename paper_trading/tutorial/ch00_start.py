@@ -78,11 +78,13 @@ both roles.
             st.altair_chart(chart + rule, width="stretch")
             best, worst = final.idxmax(), final.idxmin()
             st.markdown(
-                f"Starting in **{start_year}**, $1,000 in **{best}** would be worth "
-                f"**{c.fmt_usd(final[best])}**, while **{worst}** would be worth "
-                f"**{c.fmt_usd(final[worst])}**. Move the slider: the winners change "
-                "depending on when you start. Keep that in mind, it's one of the most "
-                "important lessons in this whole tutorial."
+                c.esc(
+                    f"Starting in **{start_year}**, $1,000 in **{best}** would be worth "
+                    f"**{c.fmt_usd(final[best])}**, while **{worst}** would be worth "
+                    f"**{c.fmt_usd(final[worst])}**. Move the slider: the winners change "
+                    "depending on when you start. Keep that in mind, it's one of the most "
+                    "important lessons in this whole tutorial."
+                )
             )
 
     c.section("How this site is organized")
