@@ -52,6 +52,7 @@ quant-backtest = "backtester.cli:main"
 quant-quality = "data_pipeline.quality:main"
 quant-factors = "factors.cli:main"
 quant-optimize = "portfolio.cli:main"
+quant-paper-api = "paper_trading.api:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
