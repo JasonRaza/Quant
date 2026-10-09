@@ -66,6 +66,13 @@ include = ["data_pipeline*", "backtester*", "factors*", "portfolio*", "ml_alpha*
 testpaths = ["tests"]
 pythonpath = ["."]
 
+[tool.coverage.run]
+source = ["data_pipeline", "backtester", "factors", "portfolio", "ml_alpha", "paper_trading", "shared"]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = false
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
