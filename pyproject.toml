@@ -26,8 +26,6 @@ factors = [
 ]
 portfolio = [
     "scipy>=1.11",
-    "scikit-learn>=1.3",
-    "cvxpy>=1.4",
 ]
 ml = [
     "scikit-learn>=1.3",
@@ -39,6 +37,7 @@ paper = [
     "streamlit>=1.30",
 ]
 dev = [
+    "scikit-learn>=1.3",  # reference implementation checked in tests
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "ruff>=0.1",
@@ -52,6 +51,7 @@ quant-fetch = "data_pipeline.cli:main"
 quant-backtest = "backtester.cli:main"
 quant-quality = "data_pipeline.quality:main"
 quant-factors = "factors.cli:main"
+quant-optimize = "portfolio.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

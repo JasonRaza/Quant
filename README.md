@@ -1,6 +1,6 @@
 # Quant Finance Portfolio (Python)
 
-A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **Projects 1–3 are implemented**; 4–6 are scaffolded for future work.
+A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **Projects 1–4 are implemented**; 5–6 are scaffolded for future work.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ flowchart LR
 
 ```bash
 # Install with backtest + dev dependencies
-pip install -e ".[backtest,dev]"
+pip install -e ".[backtest,portfolio,dev]"
 
 # Option A: seed offline sample data (no network; skips symbols that already have data)
 python scripts/seed_sample_data.py
@@ -45,6 +45,9 @@ quant-backtest --strategy dual_ma --symbol SPY
 
 # Factor research (IC report + latest screen)
 quant-factors --exclude SPY
+
+# Portfolio optimization (walk-forward comparison + current weights)
+quant-optimize --exclude SPY
 
 # Data quality report
 quant-quality --config config/watchlist.yaml
@@ -60,7 +63,7 @@ pytest -v
 | 1 | `data_pipeline/` | **Done** | Idempotent OHLCV ETL → Parquet + SQLite metadata |
 | 2 | `backtester/` | **Done** | Event-driven engine, dual-MA & pair mean-reversion |
 | 3 | `factors/` | **Done** | Cross-sectional factor screener + rank IC |
-| 4 | `portfolio/` | Scaffold | Markowitz optimizer with constraints |
+| 4 | `portfolio/` | **Done** | Constrained optimizers + walk-forward comparison |
 | 5 | `ml_alpha/` | Scaffold | ML baselines with purged time-series CV |
 | 6 | `paper_trading/` | Scaffold | FastAPI + Streamlit paper trading |
 
@@ -152,6 +155,46 @@ None of the factors is statistically significant (|t| < 2). With only 9 names, e
 - Tiny, survivor-biased universe (today's mega caps), so you need many more names for meaningful IC
 - Price/volume factors only; value and quality need fundamentals data
 
+## Project 4: Portfolio Optimizer
+
+**Resume hook:** *Built a constrained portfolio optimizer and compared allocators in a walk-forward backtest net of costs.*
+
+- CLI: `quant-optimize`
+- Covariance (`portfolio/estimators.py`): Ledoit-Wolf shrinkage toward scaled identity, implemented from the paper and checked against scikit-learn in tests
+- Expected returns: trailing mean, or factor alpha `IC × vol × z-score` from the Project 3 composite (Grinold's rule)
+- Optimizers (`portfolio/optimizer.py`, SciPy SLSQP): min variance, mean-variance, max Sharpe, risk parity (equal risk contribution), equal weight. Long-only, fully invested, per-asset cap.
+- Walk-forward (`portfolio/walkforward.py`): monthly rebalance, 252-day trailing estimation window only, 10 bps cost on turnover, weights drift between rebalances
+
+```bash
+quant-optimize --exclude SPY --max-weight 0.25 --cost-bps 10
+```
+
+Outputs: `reports/portfolio_report.json` (walk-forward metrics, current weights, risk contributions), `reports/portfolio_equity.png`
+
+### Results (9 large caps, Jan 2021 – Oct 2026, net of costs)
+
+| Allocator | Total return | Sharpe | Max DD | Avg turnover / rebalance | Effective holdings |
+|-----------|--------------|--------|--------|--------------------------|--------------------|
+| Equal weight | 238.6% | 1.14 | -34.9% | 5% | 9.0 |
+| Min variance | 104.2% | 0.94 | -22.0% | 9% | 4.9 |
+| Risk parity | 165.6% | 1.12 | -26.9% | 6% | 7.4 |
+| Factor mean-variance | 113.9% | 0.99 | -20.4% | 24% | 4.9 |
+| Max Sharpe (trailing mean) | 245.0% | 1.19 | -25.2% | 29% | 4.6 |
+| SPY buy & hold | 124.4% | 0.93 | -24.5% | — | — |
+
+What this shows:
+- Min variance and risk parity deliver what they promise: lower drawdowns than equal weight. They pay for it in return, because they tilt toward KO, PEP and JPM.
+- Max Sharpe on trailing means came out on top, but it turns over ~6× more than equal weight and is notoriously unstable out of sample. It won here because big tech kept trending, so don't read it as a robust result.
+- The factor tilt didn't add value. That's consistent with the insignificant ICs from Project 3.
+
+![Portfolio equity](reports/portfolio_equity.png)
+
+### Limitations
+
+- The universe is today's mega-cap winners, so every long-only allocator beating SPY is mostly survivorship bias
+- Single 9-asset universe and a single period, so differences between allocators are not statistically tested
+- Costs are a flat bps on turnover, with no market impact or borrow
+
 ## Repository layout
 
 ```
@@ -160,7 +203,7 @@ Quant/
 ├── data_pipeline/       # P1: fetch, store, quality
 ├── backtester/          # P2: engine, strategies, metrics
 ├── factors/             # P3: factor library, IC analysis, screener
-├── portfolio/           # P4 scaffold
+├── portfolio/           # P4: estimators, optimizers, walk-forward
 ├── ml_alpha/            # P5 scaffold
 ├── paper_trading/       # P6 scaffold
 ├── shared/              # types, config, db utils
@@ -173,11 +216,12 @@ Quant/
 ## Development
 
 ```bash
-make install   # pip install -e ".[backtest,dev]"
+make install   # pip install -e ".[backtest,portfolio,dev]"
 make test
 make seed
 make backtest
 make factors
+make optimize
 make lint      # ruff
 ```
 
@@ -185,6 +229,7 @@ make lint      # ruff
 
 - Built Parquet-based equity ETL with idempotent daily updates, SQLite metadata, and pytest coverage on parsers and pipeline orchestration.
 - Implemented event-driven backtester with dual-MA strategy, 5 bps transaction costs, and buy-and-hold benchmark comparison.
+- Built a long-only constrained optimizer (min-variance, risk parity, max-Sharpe, factor mean-variance) with Ledoit-Wolf covariance and compared allocators in a walk-forward backtest net of transaction costs.
 - Built a cross-sectional factor screener (momentum, reversal, low-vol, liquidity) with rank-IC and quantile-spread evaluation on non-overlapping horizons and lookahead-bias tests.
 
 ## License
