@@ -41,7 +41,7 @@ def test_appends_missing_days_without_touching_snapshot(snapshot, tmp_path):
     assert len(ParquetStore(snapshot).load("AAA")) == 5  # the committed snapshot is read-only
     # Fetches start the day after the snapshot's last bar, with a single quick attempt.
     assert {c[1] for c in calls} == {date(2024, 1, 6)}
-    assert all(c[2] == {"max_retries": 1, "retry_delay": 0} for c in calls)
+    assert all(c[2] == {"end": date(2024, 2, 1), "max_retries": 1, "retry_delay": 0} for c in calls)
     assert report.last_date == ParquetStore(live).load("AAA")["date"].max()
 
 
@@ -102,3 +102,21 @@ def test_live_settings_uses_refreshed_copy(tmp_path, monkeypatch):
 
     monkeypatch.setenv("QUANT_LIVE_REFRESH", "0")
     assert live_data.live_settings().data_dir == SNAPSHOT_DIR
+
+
+def test_todays_bar_is_kept_only_after_the_close(snapshot, tmp_path):
+    from data_pipeline.refresh import us_session_closed
+
+    today = date(2024, 1, 8)  # the fake fetch returns Jan 8 (today) among its bars
+
+    def fetch(symbol, start, **kwargs):
+        return bars(symbol, start, 2)  # Jan 8 and Jan 9: only Jan 8 is <= today
+
+    during = refresh_copy(snapshot, tmp_path / "a", fetch=fetch, today=today, include_today=False)
+    after = refresh_copy(snapshot, tmp_path / "b", fetch=fetch, today=today, include_today=True)
+    assert during.updated == {} and during.last_date == date(2024, 1, 5)
+    assert after.updated == {"AAA": 1, "BBB": 1} and after.last_date == today
+
+    ny = "America/New_York"
+    assert not us_session_closed(pd.Timestamp("2024-01-08 15:59", tz=ny))
+    assert us_session_closed(pd.Timestamp("2024-01-08 16:30", tz=ny))

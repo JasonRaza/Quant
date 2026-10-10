@@ -37,6 +37,7 @@ def refresh_copy(
     fetch: Optional[Fetcher] = None,
     today: Optional[date] = None,
     max_workers: int = 10,
+    include_today: Optional[bool] = None,
 ) -> RefreshReport:
     """Sync snapshot files into `target_dir`, then append bars after each last date."""
     if fetch is None:
@@ -52,6 +53,8 @@ def refresh_copy(
             shutil.copy2(src, dst)
 
     today = today or date.today()
+    if include_today is None:
+        include_today = us_session_closed()
     report = RefreshReport()
 
     def update(symbol: str) -> None:
@@ -60,11 +63,17 @@ def refresh_copy(
         if start is None or start > today:
             return
         try:
-            new_bars = fetch(symbol, start=start, max_retries=1, retry_delay=0)
+            # `end` is exclusive: ask for today's bar too, then keep it only once the US
+            # session has closed so an intraday price is never stored as a daily close.
+            new_bars = fetch(
+                symbol, start=start, end=today + timedelta(days=1), max_retries=1, retry_delay=0
+            )
         except Exception as exc:  # network errors, rate limits, provider changes
             report.failed[symbol] = str(exc)[:200]
             return
-        new_bars = new_bars[pd.to_datetime(new_bars["date"]).dt.date >= start]
+        bar_dates = pd.to_datetime(new_bars["date"]).dt.date
+        keep = (bar_dates >= start) & (bar_dates <= today) & ((bar_dates < today) | include_today)
+        new_bars = new_bars[keep]
         if not new_bars.empty:
             store.merge_and_save(symbol, new_bars)
             report.updated[symbol] = len(new_bars)
@@ -83,3 +92,9 @@ def refresh_copy(
 def _last_date(store: ParquetStore, symbol: str) -> Optional[date]:
     df = store.load(symbol)
     return None if df.empty else df["date"].max()
+
+
+def us_session_closed(now: Optional[pd.Timestamp] = None) -> bool:
+    """True once today's US equity session is over (4:30pm New York, after the close)."""
+    now = now or pd.Timestamp.now(tz="America/New_York")
+    return now.hour * 60 + now.minute >= 16 * 60 + 30
