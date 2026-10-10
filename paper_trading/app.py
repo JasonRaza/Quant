@@ -5,12 +5,19 @@ Run: quant-dashboard  (or: streamlit run paper_trading/app.py)
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import streamlit as st
+# Make the repo's packages importable without `pip install -e .` (hosted deployments
+# run this file directly from a clone).
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-from paper_trading.tutorial import build_pages
-from paper_trading.tutorial.common import PAGES
+import streamlit as st  # noqa: E402
+
+from paper_trading.tutorial import build_pages  # noqa: E402
+from paper_trading.tutorial.common import PAGES  # noqa: E402
 
 ASSETS = Path(__file__).with_name("assets")
 
@@ -23,6 +30,11 @@ lab = st.Page(
     icon=":material/science:",
     url_path="lab",
 )
+st.sidebar.caption(
+    "[Source code on GitHub](https://github.com/JasonRaza/Quant) · "
+    "Educational project, not investment advice."
+)
+
 learn = build_pages()
 PAGES["lab"] = lab  # lets tutorial pages link to the dashboard
 st.navigation({"Learn": learn, "Lab": [lab]}, expanded=True).run()

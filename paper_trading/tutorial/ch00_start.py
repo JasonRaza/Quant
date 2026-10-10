@@ -78,7 +78,7 @@ you move a slider, the numbers are recomputed.
     cols = st.columns(3)
     for col, (icon, title, text, page, link) in zip(cols, cards):
         with col.container(border=True, height="stretch"):
-            st.markdown(f"### :primary[{icon}] {title}")
+            st.markdown(f"#### :primary[{icon}] {title}")
             st.markdown(f":gray[{text}]")
             if page is not None:
                 st.page_link(
