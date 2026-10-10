@@ -26,6 +26,7 @@ from ml_alpha.cli import evaluate_models
 from ml_alpha.features import build_dataset, latest_features
 from ml_alpha.models import default_models, ridge_coefficients
 from paper_trading.broker import PaperBroker, ParquetPriceSource
+from paper_trading.live_data import live_settings
 from paper_trading.service import ALLOCATION_METHODS, Settings, make_broker, target_weights
 from portfolio.estimators import daily_returns
 from portfolio.optimizer import Constraints
@@ -59,9 +60,8 @@ def usd(x: float) -> str:
     return f"-${abs(x):,.2f}" if x < 0 else f"${x:,.2f}"
 
 
-@st.cache_resource
 def settings() -> Settings:
-    return Settings.from_config()
+    return live_settings()
 
 
 def data_version() -> float:

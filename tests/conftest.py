@@ -104,3 +104,17 @@ def streamlit_on_synthetic_data(synthetic_market, monkeypatch):
     yield synthetic_market
     st.cache_data.clear()
     st.cache_resource.clear()
+
+
+@pytest.fixture(autouse=True, scope="session")
+def no_live_refresh():
+    """Keep the suite offline: the app's daily snapshot refresh is disabled in tests."""
+    import os
+
+    previous = os.environ.get("QUANT_LIVE_REFRESH")
+    os.environ["QUANT_LIVE_REFRESH"] = "0"
+    yield
+    if previous is None:
+        os.environ.pop("QUANT_LIVE_REFRESH", None)
+    else:
+        os.environ["QUANT_LIVE_REFRESH"] = previous

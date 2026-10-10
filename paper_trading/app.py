@@ -16,10 +16,23 @@ if str(REPO_ROOT) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
+from paper_trading.live_data import live_settings, refresh_status  # noqa: E402
 from paper_trading.tutorial import build_pages  # noqa: E402
-from paper_trading.tutorial.common import PAGES  # noqa: E402
+from paper_trading.tutorial.common import PAGES, ohlcv  # noqa: E402
 
 ASSETS = Path(__file__).with_name("assets")
+
+
+def data_freshness_note() -> str:
+    """One line telling visitors how recent the prices are."""
+    bench = ohlcv(live_settings().benchmark)
+    if bench.empty:
+        return "No market data loaded."
+    note = f"Market data through {bench.index[-1].date()}"
+    status = refresh_status()
+    if status is not None:
+        note += " · refreshed automatically" if not status.failed else " · bundled snapshot"
+    return note + "."
 
 st.set_page_config(page_title="Quant Lab", page_icon=":material/insights:", layout="wide")
 st.logo(str(ASSETS / "logo.svg"), icon_image=str(ASSETS / "mark.svg"), size="large")
@@ -30,6 +43,7 @@ lab = st.Page(
     icon=":material/science:",
     url_path="lab",
 )
+st.sidebar.caption(data_freshness_note())
 st.sidebar.caption(
     "[Source code on GitHub](https://github.com/JasonRaza/Quant) · "
     "Educational project, not investment advice."

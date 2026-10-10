@@ -10,6 +10,7 @@ import pandas as pd
 import streamlit as st
 
 from data_pipeline.storage import ParquetStore
+from paper_trading.live_data import live_settings
 from paper_trading.service import Settings
 
 
@@ -48,9 +49,8 @@ PAGES: dict[str, object] = {}
 # ---- data ----------------------------------------------------------------------------
 
 
-@st.cache_resource
 def settings() -> Settings:
-    return Settings.from_config()
+    return live_settings()
 
 
 def all_symbols() -> list[str]:
