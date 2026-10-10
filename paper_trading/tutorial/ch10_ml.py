@@ -178,13 +178,14 @@ test period, plus a small safety gap ("embargo").
             alt.Chart(long)
             .mark_bar()
             .encode(
-                x=alt.X("model:N", title=None),
+                x=alt.X("model:N", title=None, axis=alt.Axis(labelAngle=0, labelLimit=200)),
                 xOffset="validation:N",
                 y=alt.Y("IC:Q", title="Out-of-sample mean IC"),
                 color=alt.Color(
                     "validation:N",
                     scale=alt.Scale(range=["#2e7d32", "#c62828"]),
                     title=None,
+                    legend=alt.Legend(orient="bottom", labelLimit=300),
                 ),
             )
             .properties(height=300)

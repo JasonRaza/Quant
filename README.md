@@ -1,347 +1,198 @@
-# Quant Finance Portfolio (Python)
+# Quant
 
-A monorepo of six quant-finance projects for software engineering students: data ingestion, backtesting, factor research, portfolio optimization, ML alpha, and paper trading. **All six projects are implemented**, and the web app includes an interactive 13-chapter tutorial that teaches the whole stack from zero.
+[![CI](https://github.com/JasonRaza/Quant/actions/workflows/ci.yml/badge.svg)](https://github.com/JasonRaza/Quant/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## Architecture
+I'm a software engineering student, and this is the project I'm using to learn
+quantitative finance. Instead of only reading about backtests and factor models, I
+built a small research stack from scratch: a market data pipeline, a backtesting engine,
+factor research, portfolio optimization, machine learning with proper validation, and a
+paper-trading app with a REST API.
+
+None of it makes money, and that's not the point. The most interesting results were the
+ones where something that looked good fell apart under an honest test. To make sure I
+actually understood the material, I also wrote an
+**[interactive tutorial](#the-web-app)** inside the app that explains everything from
+zero, with live experiments on real data.
+
+<table>
+  <tr>
+    <td><img src="docs/images/tutorial-backtesting.png" alt="Tutorial: building a moving-average strategy step by step"></td>
+    <td><img src="docs/images/lab-portfolio.png" alt="Lab dashboard: walk-forward portfolio comparison"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Tutorial: a trading rule built step by step on real SPY data</sub></td>
+    <td align="center"><sub>Lab: walk-forward comparison of five allocators, net of costs</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/tutorial-pitfalls.png" alt="Tutorial: in-sample vs out-of-sample parameter search"></td>
+    <td><img src="docs/images/tutorial-ml.png" alt="Tutorial: purged vs leaky cross-validation"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Overfitting demo: the best past settings rank 106/134 afterwards</sub></td>
+    <td align="center"><sub>Leakage demo: shuffled K-fold inflates IC from 0.01 to 0.24</sub></td>
+  </tr>
+</table>
+
+## What's inside
+
+| Part | Module | What it does |
+|------|--------|--------------|
+| 1. Data pipeline | [`data_pipeline/`](data_pipeline) | Incremental, idempotent download of daily prices into Parquet, with SQLite metadata and a data quality report |
+| 2. Backtester | [`backtester/`](backtester) | Day-by-day engine with slippage and commissions; trend-following and pairs strategies |
+| 3. Factor research | [`factors/`](factors) | Momentum, reversal, low-volatility and liquidity factors evaluated with rank IC and quantile spreads |
+| 4. Portfolio construction | [`portfolio/`](portfolio) | Ledoit-Wolf covariance, min-variance / risk parity / max-Sharpe optimizers, walk-forward comparison with costs |
+| 5. ML alpha | [`ml_alpha/`](ml_alpha) | Ridge and gradient boosting vs a baseline, with purged walk-forward cross-validation |
+| 6. Paper trading | [`paper_trading/`](paper_trading) | SQLite broker, FastAPI service, and a Streamlit app (13-chapter tutorial + research dashboard) |
+
+Each part has a command-line tool (`quant-fetch`, `quant-backtest`, `quant-factors`,
+`quant-optimize`, `quant-ml`, `quant-dashboard`, `quant-paper-api`). Details, commands
+and full result tables for every part are in **[docs/PROJECTS.md](docs/PROJECTS.md)**.
+
+## What I found
+
+All results use daily prices for 10 tickers (SPY plus nine large US stocks), January
+2020 to October 2026.
+
+- **Trend following didn't beat holding.** A 20/50-day moving-average crossover on SPY
+  returned +82% vs +162% for buy-and-hold, with a slightly smaller drawdown (-28% vs -34%).
+- **Pairs trading KO/PEP lost money** (-23%): the price gap didn't revert reliably, and
+  every round trip pays costs on two stocks.
+- **No factor was statistically significant.** The best mean IC was about 0.045
+  (t = 0.93). With nine stocks, each monthly cross-section is mostly noise, and real
+  factors fall inside the range produced by random ones.
+- **Simple allocations held up best.** Equal weight (+238%) and risk parity (+167%)
+  were competitive with optimizers that need return forecasts; min variance cut the
+  drawdown from 35% to 22% at the cost of return. The universe is survivor-biased,
+  which flatters every long-only result.
+- **Leakage is the easiest way to fool yourself with ML.** With a shuffled K-fold,
+  gradient boosting scored an IC of 0.24; with purged walk-forward validation, 0.01. No
+  model reliably beat a one-line momentum baseline.
+
+## How it fits together
 
 ```mermaid
 flowchart LR
-    subgraph foundation [Foundation]
-        P1[MarketDataPipeline]
-    end
-    subgraph research [Research]
-        P2[BacktestEngine]
-        P3[FactorScreener]
-    end
-    subgraph advanced [Advanced]
-        P4[PortfolioOptimizer]
-        P5[MLAlphaBaseline]
-    end
-    subgraph product [Product]
-        P6[PaperTradingDashboard]
-    end
-    P1 --> P2
-    P1 --> P3
-    P2 --> P4
-    P2 --> P5
-    P2 --> P6
-    P4 --> P6
+    Y[Yahoo Finance] --> P1[data_pipeline]
+    P1 --> D[(Parquet + SQLite)]
+    D --> P2[backtester]
+    D --> P3[factors]
+    D --> P4[portfolio]
+    P3 -->|composite score| P4
+    P3 -->|features| P5[ml_alpha]
+    D --> P5
+    P4 -->|target weights| P6[paper broker + REST API]
+    P2 --> APP[Streamlit app: tutorial + lab]
+    P3 --> APP
+    P4 --> APP
+    P5 --> APP
+    P6 --> APP
 ```
 
-## Quick start
+## Getting started
+
+Requires Python 3.11+.
 
 ```bash
-# Install everything (research, ML, dashboard, API, tests)
+git clone https://github.com/JasonRaza/Quant.git
+cd Quant
 pip install -e ".[all]"
 
-# Option A: seed offline sample data (no network; skips symbols that already have data)
-python scripts/seed_sample_data.py
-
-# Option B: fetch live data from Yahoo Finance
-quant-fetch --config config/watchlist.yaml
-
-# Run backtest (dual moving-average on SPY)
-quant-backtest --strategy dual_ma --symbol SPY
-
-# Factor research (IC report + latest screen)
-quant-factors --exclude SPY
-
-# Portfolio optimization (walk-forward comparison + current weights)
-quant-optimize --exclude SPY
-
-# ML alpha: purged walk-forward CV vs leaky CV
-quant-ml --exclude SPY
-
-# Web app: interactive tutorial + research dashboard (http://localhost:8501) and paper trading API (http://127.0.0.1:8000/docs)
-quant-dashboard
-quant-paper-api
-
-# Data quality report
-quant-quality --config config/watchlist.yaml
-
-# Tests
-pytest -v
+quant-fetch --config config/watchlist.yaml   # download ~6 years of daily prices
+quant-dashboard                               # open http://localhost:8501
 ```
 
-## Project status
-
-| # | Module | Status | Description |
-|---|--------|--------|-------------|
-| 1 | `data_pipeline/` | **Done** | Idempotent OHLCV ETL → Parquet + SQLite metadata |
-| 2 | `backtester/` | **Done** | Event-driven engine, dual-MA & pair mean-reversion |
-| 3 | `factors/` | **Done** | Cross-sectional factor screener + rank IC |
-| 4 | `portfolio/` | **Done** | Constrained optimizers + walk-forward comparison |
-| 5 | `ml_alpha/` | **Done** | ML baselines with purged time-series CV |
-| 6 | `paper_trading/` | **Done** | Streamlit dashboard + FastAPI paper broker |
-
-## Project 1: Market Data Pipeline
-
-**Resume hook:** *Built a reproducible ETL pipeline for OHLCV equity data.*
-
-- CLI: `quant-fetch`
-- Normalized schema: `symbol`, `date`, `open`, `high`, `low`, `close`, `volume`
-- Storage: Parquet per symbol under `data/parquet/`
-- Metadata: SQLite tracks `last_date`, row counts, errors
-- Idempotent incremental fetches (skips up-to-date symbols)
-- Retries with configurable delay
-- Quality report: `quant-quality` (missing %, stale symbols, volume spikes)
-
-### Limitations (document honestly in interviews)
-
-- Yahoo Finance data may have gaps and is not adjusted for all corporate actions consistently
-- Prices are split/dividend-adjusted, but incremental fetches don't re-adjust older bars when a new dividend is paid, so do a full re-fetch periodically
-- No survivorship-bias-free index membership history in v1
-- Approximate trading-day missing % (weekends/holidays not fully modeled)
-
-## Project 2: Backtest Engine
-
-**Resume hook:** *Implemented an event-driven backtester with transaction costs.*
-
-- Strategies: `DualMovingAverageCrossover`, `MeanReversionPair` (KO/PEP)
-- Costs: slippage moves the fill price and commission is charged once on notional (default 5 bps each)
-- Trades only when the signal changes; longs are sized net of costs so cash never goes negative
-- Metrics: total return, Sharpe, max drawdown, win rate, turnover
-- Benchmark: buy-and-hold comparison
-- No lookahead: signals shifted by one bar before execution
+No network? `python scripts/seed_sample_data.py` writes synthetic prices for a few
+tickers so the tools still run. The test suite never needs network access.
 
 ```bash
-# Dual MA on SPY
-quant-backtest --strategy dual_ma --symbol SPY --fast 20 --slow 50
-
-# Mean reversion on KO/PEP pair
-quant-backtest --strategy mean_reversion --pair KO PEP
+make check      # ruff + full test suite
+make coverage   # tests with a coverage report
 ```
 
-Pair trades run on a dollar-neutral spread (long $1 of A, short $1 of B, rebalanced daily), and costs are charged on both legs.
+## The web app
 
-Outputs: `reports/backtest_results.json`, `reports/equity_curve.png`
+`quant-dashboard` opens a Streamlit app with two sections:
 
-## Results (live data, dual-MA 20/50 on SPY)
+- **Learn**: a 13-chapter tutorial for complete beginners, from "what is a stock"
+  through backtesting pitfalls, factors, portfolio construction, ML leakage and
+  paper trading. Every chapter has interactive experiments on the real data, short
+  quizzes and progress tracking.
+- **Lab**: the research dashboard: interactive backtests, factor reports, walk-forward
+  allocator comparison, the ML evaluation, and a paper-trading account you can
+  rebalance to any allocator in one click.
 
-Run on Yahoo Finance daily bars (split- and dividend-adjusted), Jan 2, 2020 – Oct 8, 2026 (`quant-fetch`):
+The same paper account is available over REST (`quant-paper-api`, docs at
+`http://127.0.0.1:8000/docs`).
 
-| Metric | Strategy | Buy & Hold |
-|--------|----------|------------|
-| Total return | 82.47% | 162.00% |
-| Sharpe (ann.) | 0.80 | 0.81 |
-| Max drawdown | -28.08% | -33.72% |
-| Trades | 27 | — |
-| Costs paid | $3,668 | — |
+## Engineering
 
-The crossover cuts the drawdown a little but gives up about half of the buy-and-hold return after costs. That's a typical result for trend filters on a strongly trending index. *Past performance does not guarantee future results.*
+- **112 tests, ~95% line coverage**, run on every push by GitHub Actions (Python 3.11
+  and 3.12), plus ruff linting and a pre-commit hook.
+- Tests run offline on **synthetic market data**, including end-to-end tests of every
+  CLI and render tests of every tutorial chapter and dashboard tab (Streamlit
+  `AppTest`).
+- **Invariant tests** guard the logic that's easy to get subtly wrong: changing future
+  prices must not change past signals, a trade at a flat price costs exactly one
+  slippage plus one commission, purged training rows never overlap the test window.
+- Implementations are checked against known answers where possible: closed-form
+  minimum-variance and tangency portfolios, scikit-learn's Ledoit-Wolf estimator.
 
-KO/PEP mean reversion over the same period (20-day z-score, enter at ±2, exit at ±0.5) loses money: -22.7% total return, Sharpe -0.31, 125 trades, against +49.3% for simply holding the long-KO/short-PEP spread. The raw price-difference spread isn't stable enough to fade, and the round trips get eaten by double-leg costs.
+Why things are built the way they are (event-driven loop vs vectorized, SLSQP vs cvxpy,
+Parquet vs a database, Streamlit vs a web framework) is in
+**[docs/DESIGN.md](docs/DESIGN.md)**.
 
-![Equity curve](reports/equity_curve.png)
+## What I learned
 
-## Project 3: Factor Screener
+The full story, including the bugs, is in **[docs/LEARNING_LOG.md](docs/LEARNING_LOG.md)**.
+The short version:
 
-**Resume hook:** *Built a cross-sectional factor research tool measuring rank IC on non-overlapping horizons.*
+- **Backtests lie quietly.** My engine was charging costs twice and logging phantom
+  trades; a whole strategy had never actually run. I found them by re-reading and
+  re-running my own code, and both now have tests that fail on the old behavior.
+- **Data bugs look like results.** Synthetic seed data had silently merged with real
+  prices for three tickers; it only showed up as odd row counts.
+- **Statistics need honest sample sizes.** Overlapping return windows inflate t-stats.
+  Measured properly, nothing here is significant, and that's a result too.
+- **Validation design matters more than the model.** Purging changed the ML conclusion
+  completely.
+- **Choosing the universe is part of the backtest.** Picking today's winners biases
+  every result upward.
 
-- CLI: `quant-factors`
-- Factors (`factors/library.py`): momentum 12-1, 1-month reversal, low volatility, liquidity (log dollar volume)
-- Evaluation (`factors/analysis.py`): Spearman rank IC per rebalance date, IC mean / IR / t-stat / hit rate, quantile forward returns and top-minus-bottom spread
-- Rebalance dates are spaced by the horizon (default 21 days) so forward-return windows don't overlap and t-stats aren't inflated
-- Screen: equal-weight composite of cross-sectional z-scores, ranked on the latest date
-- No lookahead: a test perturbs future prices and checks past factor values are unchanged
+## Limitations
 
-```bash
-quant-factors --exclude SPY --horizon 21 --quantiles 3
-```
+- Ten hand-picked, currently successful tickers: small and survivor-biased.
+- Free Yahoo Finance daily data; adjusted history drifts with incremental updates.
+- Costs are a flat rate per trade, with no market impact or borrowing fees.
+- Hyperparameters are fixed rather than tuned with nested cross-validation.
+- The paper broker uses end-of-day prices and market orders only, with no live broker
+  connection (on purpose).
 
-Outputs: `reports/factor_report.json`, `reports/factor_ic.png`
+## What I'd do next
 
-### Results (9 large caps, Jan 2020 – Oct 8, 2026, 21-day horizon)
-
-| Factor | IC mean | t-stat | Hit rate |
-|--------|---------|--------|----------|
-| momentum_12_1 | 0.045 | 0.93 | 59% |
-| reversal_1m | 0.004 | 0.11 | 52% |
-| low_vol | -0.055 | -0.98 | 47% |
-| liquidity | 0.047 | 0.83 | 47% |
-
-None of the factors is statistically significant (|t| < 2). With only 9 names, each cross-section is very noisy, so treat this as a working pipeline, not as evidence of alpha. Low-vol's negative IC matches the 2020–2026 period, when high-beta tech led the market.
-
-![Cumulative IC](reports/factor_ic.png)
-
-### Limitations
-
-- Tiny, survivor-biased universe (today's mega caps), so you need many more names for meaningful IC
-- Price/volume factors only; value and quality need fundamentals data
-
-## Project 4: Portfolio Optimizer
-
-**Resume hook:** *Built a constrained portfolio optimizer and compared allocators in a walk-forward backtest net of costs.*
-
-- CLI: `quant-optimize`
-- Covariance (`portfolio/estimators.py`): Ledoit-Wolf shrinkage toward scaled identity, implemented from the paper and checked against scikit-learn in tests
-- Expected returns: trailing mean, or factor alpha `IC × vol × z-score` from the Project 3 composite (Grinold's rule)
-- Optimizers (`portfolio/optimizer.py`, SciPy SLSQP): min variance, mean-variance, max Sharpe, risk parity (equal risk contribution), equal weight. Long-only, fully invested, per-asset cap.
-- Walk-forward (`portfolio/walkforward.py`): monthly rebalance, 252-day trailing estimation window only, 10 bps cost on turnover, weights drift between rebalances
-
-```bash
-quant-optimize --exclude SPY --max-weight 0.25 --cost-bps 10
-```
-
-Outputs: `reports/portfolio_report.json` (walk-forward metrics, current weights, risk contributions), `reports/portfolio_equity.png`
-
-### Results (9 large caps, Jan 2021 – Oct 8, 2026, net of costs)
-
-| Allocator | Total return | Sharpe | Max DD | Avg turnover / rebalance | Effective holdings |
-|-----------|--------------|--------|--------|--------------------------|--------------------|
-| Equal weight | 238.4% | 1.13 | -34.9% | 5% | 9.0 |
-| Min variance | 106.1% | 0.95 | -22.0% | 9% | 4.9 |
-| Risk parity | 167.0% | 1.13 | -26.9% | 6% | 7.4 |
-| Factor mean-variance | 115.5% | 0.99 | -20.4% | 24% | 4.9 |
-| Max Sharpe (trailing mean) | 246.5% | 1.19 | -25.2% | 29% | 4.6 |
-| SPY buy & hold | 123.5% | 0.92 | -24.5% | — | — |
-
-What this shows:
-- Min variance and risk parity deliver what they promise: lower drawdowns than equal weight. They pay for it in return, because they tilt toward KO, PEP and JPM.
-- Max Sharpe on trailing means came out on top, but it turns over ~6× more than equal weight and is notoriously unstable out of sample. It won here because big tech kept trending, so don't read it as a robust result.
-- The factor tilt didn't add value. That's consistent with the insignificant ICs from Project 3.
-
-![Portfolio equity](reports/portfolio_equity.png)
-
-### Limitations
-
-- The universe is today's mega-cap winners, so every long-only allocator beating SPY is mostly survivorship bias
-- Single 9-asset universe and a single period, so differences between allocators are not statistically tested
-- Costs are a flat bps on turnover, with no market impact or borrow
-
-## Project 5: ML Alpha Baseline
-
-**Resume hook:** *Built ML return-prediction baselines with purged walk-forward cross-validation and quantified how much leaky CV inflates results.*
-
-- CLI: `quant-ml`
-- Dataset (`ml_alpha/features.py`): one row per (date, symbol), sampled weekly. 11 cross-sectionally ranked features: short/medium-term returns, 21-day volatility, distance to the 50/200-day MA, volume z-score, and the four Project 3 factors.
-- Label: 21-day forward return, demeaned across symbols, so models predict which names beat the others rather than market direction
-- CV (`ml_alpha/cv.py`): expanding-window walk-forward split by date. Training samples whose 21-day label window reaches into the test block are **purged**, plus a 5-day embargo.
-- Models (`ml_alpha/models.py`): momentum-rank baseline (no fitting), ridge regression, gradient-boosted trees (scikit-learn `HistGradientBoostingRegressor`)
-- Evaluation: out-of-sample rank IC per date, t-stat on non-overlapping dates only, top-minus-bottom tercile spread. Each model is also scored with a shuffled K-fold to show the leakage effect.
-
-```bash
-quant-ml --exclude SPY --horizon 21 --splits 5 --embargo-days 5
-```
-
-Outputs: `reports/ml_report.json`, `reports/ml_oos_ic.png`. The same evaluation is interactive in the dashboard's **ML alpha** tab.
-
-### Results (9 large caps, out-of-sample Jan 2022 – Sep 2026)
-
-| Model | OOS IC (purged) | t-stat | Long-short (ann.) | IC with leaky shuffled K-fold |
-|-------|-----------------|--------|-------------------|-------------------------------|
-| Momentum baseline | 0.031 | 0.55 | -0.8% | 0.031 |
-| Ridge | 0.038 | 0.75 | +1.5% | 0.085 |
-| Gradient boosting | 0.007 | 0.14 | -2.2% | **0.243** |
-
-What this shows:
-- **Leakage is the headline.** Under a shuffled K-fold, gradient boosting looks like a strong signal (IC 0.24). Evaluated properly, it's indistinguishable from zero. The baseline, which learns nothing, scores the same under both schemes, which confirms the gap comes from training on overlapping future labels.
-- Ridge only matches the one-feature momentum baseline, and nothing is statistically significant. With 9 stocks there's simply too little cross-sectional signal to learn.
-
-![ML out-of-sample IC](reports/ml_oos_ic.png)
-
-### Limitations
-
-- 9 names × ~285 weekly dates: far too small for ML to beat simple baselines; a broad universe (e.g. S&P 500) is the real test
-- Hyperparameters are fixed, not tuned. Tuning would need a nested purged CV to avoid a new layer of leakage.
-- Price/volume features only; no fundamentals, sentiment or alternative data
-
-## Interactive tutorial
-
-`quant-dashboard` opens a web app whose **Learn** section is a beginner tutorial: no prior knowledge of trading, statistics or ML assumed. Every chapter mixes plain-English explanations with interactive experiments on the real data and real project code, plus quizzes, takeaways and progress tracking.
-
-| # | Chapter | Hands-on experiments |
-|---|---------|----------------------|
-| 0 | Start here | What $1,000 in each stock became, by start year |
-| 1 | Markets and prices | Live candlestick + volume charts |
-| 2 | Returns and risk | Invest in the past, the recovery problem, volatility histograms, underwater charts |
-| 3 | Comparing investments | Risk/return map, correlation heatmap, beta regression |
-| 4 | Market data | Split vs adjusted prices, data health check, survivorship-bias simulation |
-| 5 | Strategies and backtesting | Moving averages, the crossover rule step by step, trade log, cost sensitivity |
-| 6 | Backtesting pitfalls | Lookahead bias, in- vs out-of-sample grid search, random-strategy lottery |
-| 7 | Mean reversion and pairs | Z-score bands, pairs backtest, rolling correlation |
-| 8 | Factors | Today's rankings, IC on a single date, real vs random factors, quantile staircase |
-| 9 | Building portfolios | Two-stock diversification, efficient frontier, weight instability, walk-forward |
-| 10 | Machine learning | Training data, overfitting vs tree depth, purged vs leaky validation |
-| 11 | From research to trading | Order types, a private sandbox paper account, production checklist |
-| 12 | Glossary and final quiz | Searchable glossary, 8-question final quiz |
-
-The **Lab** section is the research dashboard described below. Tutorial code lives in `paper_trading/tutorial/`; `tests/test_tutorial.py` renders every chapter on synthetic data.
-
-## Project 6: Paper Trading Dashboard
-
-**Resume hook:** *Shipped a Streamlit research dashboard and a FastAPI paper-trading service backed by a SQLite broker.*
-
-```bash
-quant-dashboard     # Streamlit app (tutorial + dashboard) on http://localhost:8501
-quant-paper-api     # REST API, interactive docs on http://127.0.0.1:8000/docs
-```
-
-**Dashboard tabs** (Lab page, `paper_trading/dashboard.py`):
-- **Market**: price chart with moving averages for any watchlist symbol
-- **Backtest**: dual-MA or pair mean reversion with sliders for windows and costs, metrics vs buy & hold
-- **Factors**: rank IC table, cumulative IC chart and latest composite screen, with horizon/quantile controls
-- **Portfolio**: walk-forward comparison of all allocators, with max-weight and cost sliders, plus today's weights
-- **ML alpha**: purged vs leaky CV comparison, out-of-sample IC table and chart, ridge coefficients, today's model rankings (horizon, splits and embargo sliders)
-- **Paper trading**: account equity and P&L, order ticket, one-click rebalance to any allocator, positions, order history, reset
-
-**Paper broker** (`paper_trading/broker.py`):
-- Long-only cash account persisted in SQLite (`data/paper_trading.sqlite`, git-ignored), shared by the dashboard and the API
-- Whole-share market orders filled at the latest local close ± 5 bps slippage, plus 5 bps commission
-- Average-cost positions, realized and unrealized P&L
-- Rejected orders (insufficient cash, overselling, unknown symbol) are logged with a reason
-- Rebalancing sells first to free cash, sizes buys net of costs, and liquidates holdings outside the target
-
-**API** (`paper_trading/api.py`): `GET /account`, `/positions`, `/orders`, `/prices/{symbol}`, `/allocations/{method}`; `POST /orders`, `/rebalance`, `/reset`. Rejected orders return HTTP 400 with the reason.
-
-### Limitations
-
-- Prices are end-of-day closes from the local store, so fills only "move" after `quant-fetch`. There's no intraday feed or live broker connection.
-- Market orders only (no limit/stop orders), single account, no authentication. The API is meant to run on localhost.
+- A point-in-time S&P 500 universe, so results aren't survivor-biased.
+- Fundamental data for value and quality factors.
+- A transaction cost model with market impact, and limit-order execution.
+- Nested purged CV for model tuning.
 
 ## Repository layout
 
 ```
 Quant/
-├── config/watchlist.yaml
-├── data_pipeline/       # P1: fetch, store, quality
-├── backtester/          # P2: engine, strategies, metrics
-├── factors/             # P3: factor library, IC analysis, screener
-├── portfolio/           # P4: estimators, optimizers, walk-forward
-├── ml_alpha/            # P5: features, purged CV, models
-├── paper_trading/       # P6: broker, API, Streamlit app + tutorial/
-├── shared/              # types, config, db utils
-├── scripts/seed_sample_data.py
-├── tests/
-├── reports/             # backtest outputs
-└── pyproject.toml
+├── data_pipeline/     # 1. fetch, store, quality report
+├── backtester/        # 2. engine, strategies, metrics
+├── factors/           # 3. factor library, IC analysis, screener
+├── portfolio/         # 4. estimators, optimizers, walk-forward
+├── ml_alpha/          # 5. features, purged CV, models
+├── paper_trading/     # 6. broker, API, Streamlit app, tutorial/
+├── shared/            # config, types, metadata store
+├── tests/             # 112 tests, synthetic-data fixtures
+├── docs/              # project details, design notes, learning log, screenshots
+├── reports/           # generated result files and charts
+└── config/watchlist.yaml
 ```
-
-## Development
-
-```bash
-make install   # pip install -e ".[all]"
-make test
-make seed
-make backtest
-make factors
-make optimize
-make ml
-make dashboard
-make api
-make lint      # ruff
-```
-
-## Resume bullets
-
-- Built Parquet-based equity ETL with idempotent daily updates, SQLite metadata, and pytest coverage on parsers and pipeline orchestration.
-- Implemented event-driven backtester with dual-MA strategy, 5 bps transaction costs, and buy-and-hold benchmark comparison.
-- Built ML return-prediction baselines (ridge, gradient boosting) with purged walk-forward CV and showed a shuffled K-fold inflates out-of-sample IC from ~0 to 0.24.
-- Wrote an interactive 13-chapter tutorial (Streamlit) that teaches markets, backtesting pitfalls, factors, portfolio construction and ML leakage to complete beginners using live experiments on real data.
-- Shipped a Streamlit dashboard and FastAPI service over a SQLite paper broker that rebalances a live account to any research allocator.
-- Built a long-only constrained optimizer (min-variance, risk parity, max-Sharpe, factor mean-variance) with Ledoit-Wolf covariance and compared allocators in a walk-forward backtest net of transaction costs.
-- Built a cross-sectional factor screener (momentum, reversal, low-vol, liquidity) with rank-IC and quantile-spread evaluation on non-overlapping horizons and lookahead-bias tests.
 
 ## License
 
-MIT
+MIT. This is an educational project; nothing here is investment advice.

@@ -25,5 +25,5 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Unrelated project cloned into this folder
+# Local checkouts of other projects
 odysseus/
