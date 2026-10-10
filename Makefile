@@ -1,4 +1,4 @@
-.PHONY: install test coverage check fetch backtest factors optimize ml dashboard api seed quality lint
+.PHONY: install test coverage check snapshot fetch backtest factors optimize ml dashboard api seed quality lint
 
 install:
 	pip install -e ".[all]"
@@ -13,6 +13,9 @@ check: lint test
 
 seed:
 	python scripts/seed_sample_data.py
+
+snapshot:
+	cp data/parquet/*.parquet data/snapshot/
 
 fetch:
 	quant-fetch --config config/watchlist.yaml

@@ -27,12 +27,20 @@ ALLOCATION_METHODS = [
 ]
 
 
+# Committed copy of the market data, used when no local data has been fetched
+# (e.g. on a fresh clone or a hosted deployment). Refresh with `make snapshot`.
+SNAPSHOT_DIR = resolve_path("data/snapshot")
+
+
 @dataclass
 class Settings:
     data_dir: Path
     paper_db: Path
     universe: list[str]
     benchmark: str = "SPY"
+    # Public demo: every visitor gets a private, temporary paper account instead of
+    # sharing one. On when QUANT_PUBLIC_DEMO=1 or when running on the bundled snapshot.
+    public_demo: bool = False
 
     @classmethod
     def from_config(cls, config_path: str = "config/watchlist.yaml") -> "Settings":
@@ -43,11 +51,16 @@ class Settings:
         paper_db = os.environ.get("QUANT_PAPER_DB") or cfg.get(
             "paper_db", "data/paper_trading.sqlite"
         )
+        data_path = resolve_path(data_dir)
+        on_snapshot = False
+        if not any(data_path.glob("*.parquet")) and any(SNAPSHOT_DIR.glob("*.parquet")):
+            data_path, on_snapshot = SNAPSHOT_DIR, True
         return cls(
-            data_dir=resolve_path(data_dir),
+            data_dir=data_path,
             paper_db=resolve_path(paper_db),
             universe=[s.upper() for s in cfg.get("symbols", []) if s.upper() != benchmark],
             benchmark=benchmark,
+            public_demo=on_snapshot or os.environ.get("QUANT_PUBLIC_DEMO") == "1",
         )
 
 

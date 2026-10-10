@@ -5,6 +5,9 @@ Rendered as the Lab page of paper_trading/app.py (run: quant-dashboard).
 
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
@@ -22,6 +25,7 @@ from factors.panel import build_panel
 from ml_alpha.cli import evaluate_models
 from ml_alpha.features import build_dataset, latest_features
 from ml_alpha.models import default_models, ridge_coefficients
+from paper_trading.broker import PaperBroker, ParquetPriceSource
 from paper_trading.service import ALLOCATION_METHODS, Settings, make_broker, target_weights
 from portfolio.estimators import daily_returns
 from portfolio.optimizer import Constraints
@@ -149,6 +153,16 @@ def run_ml(universe: tuple, horizon: int, n_splits: int, embargo: int, _version:
         "as_of": panel.close.index[-1],
     }
     return table, cum_ic, coefs, preds, meta
+
+
+def paper_broker(cfg: Settings) -> PaperBroker:
+    """The shared local account, or a per-session throwaway account in public demo mode."""
+    if not cfg.public_demo:
+        return make_broker(cfg)
+    if "demo_paper_db" not in st.session_state:
+        tmp = Path(tempfile.mkdtemp(prefix="quant_demo_"))
+        st.session_state["demo_paper_db"] = str(tmp / "paper.sqlite")
+    return PaperBroker(st.session_state["demo_paper_db"], ParquetPriceSource(cfg.data_dir))
 
 
 @st.cache_data
@@ -387,7 +401,13 @@ with tab_ml:
     )
 
 with tab_paper:
-    broker = make_broker(cfg)
+    broker = paper_broker(cfg)
+    if cfg.public_demo:
+        st.info(
+            "Public demo: this paper account is private to your browser session and resets "
+            "when you close the page.",
+            icon=":material/visibility_lock:",
+        )
     flash = st.session_state.pop("flash", None)
     if flash:
         getattr(st, flash[0])(flash[1])
