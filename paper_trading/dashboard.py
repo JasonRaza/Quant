@@ -142,8 +142,12 @@ def run_ml(universe: tuple, horizon: int, n_splits: int, embargo: int, _version:
         },
         index=latest.index,
     )
-    meta = {"samples": len(ds.X), "features": ds.X.shape[1], "period": period,
-            "as_of": panel.close.index[-1]}
+    meta = {
+        "samples": len(ds.X),
+        "features": ds.X.shape[1],
+        "period": period,
+        "as_of": panel.close.index[-1],
+    }
     return table, cum_ic, coefs, preds, meta
 
 
@@ -156,15 +160,29 @@ def current_weights(method: str, max_weight: float, _version: float) -> pd.Serie
 
 cfg = settings()
 version = data_version()
+with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+    st.badge("Research dashboard", icon=":material/science:", color="primary")
+    st.badge(f"{len(cfg.universe)} stocks + {cfg.benchmark}", icon=":material/apps:", color="gray")
+    st.badge(
+        f"Data through {load_symbol(cfg.benchmark, version).index[-1].date()}",
+        icon=":material/calendar_month:",
+        color="gray",
+    )
 st.title("Quant Lab")
-st.caption(
-    f"Universe: {', '.join(cfg.universe)} · benchmark {cfg.benchmark} · "
-    "data from the local Parquet store (refresh with `quant-fetch`)"
+st.markdown(
+    f":gray[Universe: {', '.join(cfg.universe)}. Benchmark {cfg.benchmark}. "
+    "Data from the local Parquet store (refresh with `quant-fetch`).]"
 )
 
-tab_market, tab_bt, tab_factors, tab_port, tab_ml, tab_paper = st.tabs(
-    ["Market", "Backtest", "Factors", "Portfolio", "ML alpha", "Paper trading"]
-)
+TAB_LABELS = [
+    ":material/candlestick_chart: Market",
+    ":material/history: Backtest",
+    ":material/leaderboard: Factors",
+    ":material/donut_large: Portfolio",
+    ":material/neurology: ML alpha",
+    ":material/receipt_long: Paper trading",
+]
+tab_market, tab_bt, tab_factors, tab_port, tab_ml, tab_paper = st.tabs(TAB_LABELS)
 
 with tab_market:
     symbols = [cfg.benchmark] + cfg.universe
@@ -181,8 +199,15 @@ with tab_market:
             chart[f"MA{n}"] = df["close"].rolling(n).mean()
         with col1:
             last, prev = df["close"].iloc[-1], df["close"].iloc[-2]
-            st.metric("Last close", f"{last:,.2f}", pct(last / prev - 1))
-            st.metric("1-year return", pct(last / df["close"].iloc[-252] - 1))
+            st.metric(
+                "Last close",
+                f"{last:,.2f}",
+                pct(last / prev - 1),
+                border=True,
+                chart_data=df["close"].iloc[-63:].round(2).tolist(),
+                chart_type="area",
+            )
+            st.metric("1-year return", pct(last / df["close"].iloc[-252] - 1), border=True)
             st.caption(f"As of {df.index[-1].date()} · {len(df):,} bars")
         with col2:
             st.line_chart(chart, height=420)
@@ -213,10 +238,14 @@ with tab_bt:
             c = st.columns(4)
             excess = m["total_return"] - m["benchmark_total_return"]
             sharpe_diff = m["sharpe"] - m["benchmark_sharpe"]
-            c[0].metric("Total return", pct(m["total_return"]), f"{excess:+.2%} vs benchmark")
-            c[1].metric("Sharpe", f"{m['sharpe']:.2f}", f"{sharpe_diff:+.2f} vs benchmark")
-            c[2].metric("Max drawdown", pct(m["max_drawdown"]))
-            c[3].metric("Trades", n_trades)
+            c[0].metric(
+                "Total return", pct(m["total_return"]), f"{excess:+.2%} vs benchmark", border=True
+            )
+            c[1].metric(
+                "Sharpe", f"{m['sharpe']:.2f}", f"{sharpe_diff:+.2f} vs benchmark", border=True
+            )
+            c[2].metric("Max drawdown", pct(m["max_drawdown"]), border=True)
+            c[3].metric("Trades", n_trades, border=True)
             st.line_chart(curves, height=380)
 
 with tab_factors:
@@ -230,8 +259,12 @@ with tab_factors:
         st.subheader("Rank IC by factor")
         st.dataframe(
             table.style.format(
-                {"ic_mean": "{:.3f}", "t_stat": "{:.2f}", "hit_rate": "{:.0%}",
-                 "long_short_ann_return": "{:.1%}"}
+                {
+                    "ic_mean": "{:.3f}",
+                    "t_stat": "{:.2f}",
+                    "hit_rate": "{:.0%}",
+                    "long_short_ann_return": "{:.1%}",
+                }
             ),
             width="stretch",
         )
@@ -258,8 +291,13 @@ with tab_port:
         cols = ["total_return", "sharpe", "max_drawdown", "avg_turnover", "total_costs"]
         st.dataframe(
             wf_metrics[cols].style.format(
-                {"total_return": "{:.1%}", "sharpe": "{:.2f}", "max_drawdown": "{:.1%}",
-                 "avg_turnover": "{:.1%}", "total_costs": "${:,.0f}"}
+                {
+                    "total_return": "{:.1%}",
+                    "sharpe": "{:.2f}",
+                    "max_drawdown": "{:.1%}",
+                    "avg_turnover": "{:.1%}",
+                    "total_costs": "${:,.0f}",
+                }
             ),
             width="stretch",
         )
@@ -269,8 +307,9 @@ with tab_port:
 with tab_ml:
     col1, col2 = st.columns([1, 3])
     with col1:
-        ml_horizon = st.select_slider("Forward horizon (days)", [5, 10, 21, 63], value=21,
-                                      key="ml_horizon")
+        ml_horizon = st.select_slider(
+            "Forward horizon (days)", [5, 10, 21, 63], value=21, key="ml_horizon"
+        )
         ml_splits = st.slider("Walk-forward splits", 2, 8, 5)
         ml_embargo = st.slider("Embargo (days)", 0, 30, 5)
         st.caption(
@@ -291,13 +330,25 @@ with tab_ml:
         )
         cols = ["ic_mean", "t_stat", "hit_rate", "long_short_ann_return", "leaky_ic_mean"]
         st.dataframe(
-            ml_table[cols].rename(columns={
-                "ic_mean": "IC (purged)", "t_stat": "t-stat", "hit_rate": "Hit rate",
-                "long_short_ann_return": "Long-short (ann.)", "leaky_ic_mean": "IC (leaky CV)",
-            }).style.format({
-                "IC (purged)": "{:.3f}", "t-stat": "{:.2f}", "Hit rate": "{:.0%}",
-                "Long-short (ann.)": "{:+.1%}", "IC (leaky CV)": "{:.3f}",
-            }),
+            ml_table[cols]
+            .rename(
+                columns={
+                    "ic_mean": "IC (purged)",
+                    "t_stat": "t-stat",
+                    "hit_rate": "Hit rate",
+                    "long_short_ann_return": "Long-short (ann.)",
+                    "leaky_ic_mean": "IC (leaky CV)",
+                }
+            )
+            .style.format(
+                {
+                    "IC (purged)": "{:.3f}",
+                    "t-stat": "{:.2f}",
+                    "Hit rate": "{:.0%}",
+                    "Long-short (ann.)": "{:+.1%}",
+                    "IC (leaky CV)": "{:.3f}",
+                }
+            ),
             width="stretch",
         )
         st.subheader("Purged vs leaky CV")
@@ -342,10 +393,10 @@ with tab_paper:
         getattr(st, flash[0])(flash[1])
     acct = broker.account()
     c = st.columns(4)
-    c[0].metric("Equity", usd(acct["equity"]), pct(acct["total_return"]))
-    c[1].metric("Cash", usd(acct["cash"]))
-    c[2].metric("Unrealized P&L", usd(acct["unrealized_pnl"]))
-    c[3].metric("Realized P&L", usd(acct["realized_pnl"]))
+    c[0].metric("Equity", usd(acct["equity"]), pct(acct["total_return"]), border=True)
+    c[1].metric("Cash", usd(acct["cash"]), border=True)
+    c[2].metric("Unrealized P&L", usd(acct["unrealized_pnl"]), border=True)
+    c[3].metric("Realized P&L", usd(acct["realized_pnl"]), border=True)
     st.caption(
         "Orders fill at the latest close in the local data plus 5 bps slippage and 5 bps "
         "commission. Prices only move when you refresh data with `quant-fetch`."
@@ -362,8 +413,7 @@ with tab_paper:
                 order = broker.submit_order(o_sym, o_side, int(o_qty))
                 if order.status == "filled":
                     msg = (
-                        f"Filled {order.side} {order.quantity} {order.symbol}"
-                        f" @ {order.price:,.2f}"
+                        f"Filled {order.side} {order.quantity} {order.symbol} @ {order.price:,.2f}"
                     )
                     st.session_state["flash"] = ("success", msg)
                 else:
@@ -399,11 +449,15 @@ with tab_paper:
         pos["weight"] = pos["market_value"] / acct["equity"]
         st.dataframe(
             pos.set_index("symbol").style.format(
-                {"avg_cost": "{:,.2f}", "price": "{:,.2f}", "market_value": usd,
-                 "unrealized_pnl": usd, "weight": "{:.1%}"}
+                {
+                    "avg_cost": "{:,.2f}",
+                    "price": "{:,.2f}",
+                    "market_value": usd,
+                    "unrealized_pnl": usd,
+                    "weight": "{:.1%}",
+                }
             ),
             width="stretch",
         )
     st.subheader("Order history")
     st.dataframe(broker.orders(200), width="stretch", hide_index=True)
-

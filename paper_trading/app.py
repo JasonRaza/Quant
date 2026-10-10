@@ -10,12 +10,19 @@ from pathlib import Path
 import streamlit as st
 
 from paper_trading.tutorial import build_pages
+from paper_trading.tutorial.common import PAGES
 
-st.set_page_config(page_title="Quant Lab", layout="wide")
+ASSETS = Path(__file__).with_name("assets")
+
+st.set_page_config(page_title="Quant Lab", page_icon=":material/insights:", layout="wide")
+st.logo(str(ASSETS / "logo.svg"), icon_image=str(ASSETS / "mark.svg"), size="large")
 
 lab = st.Page(
     str(Path(__file__).with_name("dashboard.py")),
     title="Research dashboard",
+    icon=":material/science:",
     url_path="lab",
 )
-st.navigation({"Learn": build_pages(), "Lab": [lab]}, expanded=True).run()
+learn = build_pages()
+PAGES["lab"] = lab  # lets tutorial pages link to the dashboard
+st.navigation({"Learn": learn, "Lab": [lab]}, expanded=True).run()

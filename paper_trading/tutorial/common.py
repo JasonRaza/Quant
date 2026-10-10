@@ -23,6 +23,23 @@ class Chapter:
     render: Callable[[], None]
 
 
+# Monochrome Material Symbols used for navigation (rendered by Streamlit, not emoji).
+ICONS = {
+    "start": ":material/explore:",
+    "markets": ":material/candlestick_chart:",
+    "returns-risk": ":material/trending_up:",
+    "compare": ":material/balance:",
+    "data": ":material/database:",
+    "backtesting": ":material/history:",
+    "pitfalls": ":material/report:",
+    "pairs": ":material/sync_alt:",
+    "factors": ":material/leaderboard:",
+    "portfolio": ":material/donut_large:",
+    "ml": ":material/neurology:",
+    "trading": ":material/receipt_long:",
+    "glossary": ":material/school:",
+}
+
 # Filled by paper_trading.tutorial.__init__ so chapters can link to each other.
 CHAPTERS: list[Chapter] = []
 PAGES: dict[str, object] = {}
@@ -72,13 +89,18 @@ def require_data() -> bool:
 def chapter_header(slug: str) -> Chapter:
     ch = next(c for c in CHAPTERS if c.slug == slug)
     done = completed()
-    st.caption(
-        f"Chapter {ch.number} of {len(CHAPTERS) - 1} · about {ch.minutes} min · "
-        f"{len(done)}/{len(CHAPTERS)} chapters completed"
-    )
+    with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+        label = f"Chapter {ch.number} of {len(CHAPTERS) - 1}"
+        st.badge(label, icon=ICONS.get(slug), color="primary")
+        st.badge(f"About {ch.minutes} min", icon=":material/schedule:", color="gray")
+        if slug in done:
+            st.badge("Completed", icon=":material/task_alt:", color="green")
     st.title(ch.title)
-    st.markdown(f"*{ch.summary}*")
-    st.progress(len(done) / len(CHAPTERS))
+    st.markdown(f":gray[{ch.summary}]")
+    st.progress(
+        len(done) / len(CHAPTERS),
+        text=f"Course progress: {len(done)} of {len(CHAPTERS)} chapters completed",
+    )
     return ch
 
 
@@ -90,27 +112,27 @@ def section(title: str) -> None:
 def try_it(title: str = "experiment"):
     """Bordered box for interactive experiments."""
     box = st.container(border=True)
-    box.markdown(f"#### Try it: {esc(title)}")
+    box.markdown(f"#### :primary[:material/science:] Try it: {esc(title)}")
     return box
 
 
 def key_idea(text: str) -> None:
-    st.info(f"**Key idea.** {text}")
+    st.info(text, icon=":material/lightbulb:", title="Key idea")
 
 
 def warning_box(text: str) -> None:
-    st.warning(text)
+    st.warning(text, icon=":material/warning:")
 
 
 def takeaways(points: Sequence[str]) -> None:
     with st.container(border=True):
-        st.markdown("#### What to remember")
+        st.markdown("#### :green[:material/check_circle:] What to remember")
         st.markdown("\n".join(f"- {p}" for p in points))
 
 
 def term(word: str, definition: str) -> None:
     """Inline glossary entry rendered as a small expander."""
-    with st.expander(f"**{word}**"):
+    with st.expander(f"**{word}**", icon=":material/menu_book:"):
         st.markdown(definition)
 
 
@@ -123,7 +145,7 @@ def quiz(
 ) -> Optional[bool]:
     """Multiple-choice question; returns True/False once answered, None before."""
     with st.container(border=True):
-        st.markdown(f"**Question.** {question}")
+        st.markdown(f":orange[:material/quiz:] **Question.** {question}")
         choice = st.radio(
             question, options, index=None, key=f"quiz_{key}", label_visibility="collapsed"
         )
@@ -131,9 +153,12 @@ def quiz(
             return None
         correct = options.index(choice) == answer
         if correct:
-            st.success(f"Correct! {explanation}")
+            st.success(f"Correct! {explanation}", icon=":material/check_circle:")
         else:
-            st.error(f"Not quite. The answer is **{options[answer]}**. {explanation}")
+            st.error(
+                f"Not quite. The answer is **{options[answer]}**. {explanation}",
+                icon=":material/cancel:",
+            )
         st.session_state.setdefault("quiz_results", {})[key] = correct
         return correct
 
@@ -152,15 +177,21 @@ def chapter_footer(slug: str, quiz_keys: Sequence[str] = ()) -> None:
     idx = next(i for i, c in enumerate(CHAPTERS) if c.slug == slug)
     prev_ch = CHAPTERS[idx - 1] if idx > 0 else None
     next_ch = CHAPTERS[idx + 1] if idx + 1 < len(CHAPTERS) else None
-    left, mid, right = st.columns([1, 1, 1])
+    left, mid, right = st.columns([1, 1, 1], vertical_alignment="center")
     if prev_ch and prev_ch.slug in PAGES:
-        left.page_link(PAGES[prev_ch.slug], label=f"← {prev_ch.title}")
+        left.page_link(PAGES[prev_ch.slug], label=prev_ch.title, icon=":material/arrow_back:")
     if slug in completed():
-        mid.success("Chapter completed")
+        mid.success("Chapter completed", icon=":material/task_alt:")
     elif quiz_keys:
         mid.caption("Answer the quiz questions to complete this chapter.")
     if next_ch and next_ch.slug in PAGES:
-        right.page_link(PAGES[next_ch.slug], label=f"Next: {next_ch.title} →")
+        with right.container(border=True):
+            st.page_link(
+                PAGES[next_ch.slug],
+                label=f"Next: {next_ch.title}",
+                icon=":material/arrow_forward:",
+                icon_position="right",
+            )
 
 
 # ---- small math helpers used by several chapters ------------------------------------------

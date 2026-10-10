@@ -30,7 +30,7 @@ def candlestick(df: pd.DataFrame) -> tuple[alt.Chart, alt.Chart]:
     base = alt.Chart(data).encode(
         x=alt.X("date:T", title=None),
         color=alt.condition(
-            "datum.close >= datum.open", alt.value("#2e7d32"), alt.value("#c62828")
+            "datum.close >= datum.open", alt.value("#15803D"), alt.value("#B42318")
         ),
         tooltip=[
             alt.Tooltip("date:T"),

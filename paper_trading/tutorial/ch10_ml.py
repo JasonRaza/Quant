@@ -183,7 +183,7 @@ test period, plus a small safety gap ("embargo").
                 y=alt.Y("IC:Q", title="Out-of-sample mean IC"),
                 color=alt.Color(
                     "validation:N",
-                    scale=alt.Scale(range=["#2e7d32", "#c62828"]),
+                    scale=alt.Scale(range=["#15803D", "#B42318"]),
                     title=None,
                     legend=alt.Legend(orient="bottom", labelLimit=300),
                 ),

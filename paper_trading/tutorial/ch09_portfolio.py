@@ -152,7 +152,7 @@ All are **long-only** (no short selling) and capped at a maximum weight per stoc
         )
         base = (
             alt.Chart(cloud)
-            .mark_circle(size=10, opacity=0.3, color="#90a4ae")
+            .mark_circle(size=10, opacity=0.3, color="#94A3B8")
             .encode(
                 x=alt.X("volatility:Q", axis=alt.Axis(format="%"), title="Risk (volatility)"),
                 y=alt.Y(

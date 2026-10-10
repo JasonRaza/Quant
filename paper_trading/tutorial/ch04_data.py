@@ -13,14 +13,16 @@ SLUG = "data"
 
 PIPELINE_DOT = """
 digraph {
-  rankdir=LR; node [shape=box, style="rounded,filled", fillcolor="#eef3fb", fontname="Helvetica"];
+  rankdir=LR;
+  node [shape=box, style="rounded,filled", fillcolor="#E6F2F1", color="#0F766E",
+        fontname="Helvetica"];
   yahoo [label="Yahoo Finance\\n(free daily bars)"];
   fetch [label="fetcher.py\\ndownload + retries"];
   norm  [label="normalize\\nOHLCV schema"];
   pq    [label="Parquet files\\none per ticker"];
   meta  [label="SQLite metadata\\nlast date, row counts"];
   qa    [label="quality.py\\ngaps, stale data"];
-  research [label="Backtests, factors,\\nportfolios, ML", fillcolor="#e8f5e9"];
+  research [label="Backtests, factors,\\nportfolios, ML", fillcolor="#FEF3E2", color="#D97706"];
   yahoo -> fetch -> norm -> pq -> research;
   fetch -> meta; pq -> qa;
 }

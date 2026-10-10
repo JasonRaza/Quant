@@ -91,7 +91,7 @@ spread is from its recent average. The rule:
             )
             zline = (
                 alt.Chart(view)
-                .mark_line(color="#455a64")
+                .mark_line(color="#334155")
                 .encode(x=alt.X("date:T", title=None), y=alt.Y("z:Q", title="Spread z-score"))
             )
             pos = (
@@ -103,7 +103,7 @@ spread is from its recent average. The rule:
                     color=alt.Color(
                         "position:N",
                         scale=alt.Scale(
-                            domain=["long spread", "short spread"], range=["#2e7d32", "#c62828"]
+                            domain=["long spread", "short spread"], range=["#15803D", "#B42318"]
                         ),
                         title=None,
                     ),
@@ -122,7 +122,7 @@ spread is from its recent average. The rule:
                 .encode(
                     y="level:Q",
                     color=alt.Color(
-                        "kind:N", scale=alt.Scale(range=["#ef6c00", "#90a4ae"]), legend=None
+                        "kind:N", scale=alt.Scale(range=["#D97706", "#94A3B8"]), legend=None
                     ),
                 )
             )

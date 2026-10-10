@@ -158,7 +158,7 @@ you could have stomached holding on.
         peak = p[:worst].idxmax()
         chart = (
             alt.Chart(dd.rename("drawdown").reset_index())
-            .mark_area(color="#c62828", opacity=0.5)
+            .mark_area(color="#B42318", opacity=0.5)
             .encode(
                 x=alt.X("date:T", title=None),
                 y=alt.Y("drawdown:Q", axis=alt.Axis(format="%"), title="Below previous peak"),

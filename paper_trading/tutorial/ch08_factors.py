@@ -105,8 +105,8 @@ portfolios built on factors like these:
                 y=alt.Y("ticker:N", sort="-x", title=None),
                 color=alt.condition(
                     alt.datum.score >= df["score"].median(),
-                    alt.value("#2e7d32"),
-                    alt.value("#9e9e9e"),
+                    alt.value("#15803D"),
+                    alt.value("#9CA3AF"),
                 ),
             )
             .properties(height=280)
@@ -217,7 +217,7 @@ pure chance produces.
         }
         hist = (
             alt.Chart(pd.DataFrame({"mean IC": rand_ics}))
-            .mark_bar(color="#b0bec5")
+            .mark_bar(color="#CBD5E1")
             .encode(
                 x=alt.X("mean IC:Q", bin=alt.Bin(maxbins=30)),
                 y=alt.Y("count():Q", title="Random factors"),

@@ -11,6 +11,27 @@ from paper_trading.tutorial import common as c
 SLUG = "start"
 
 
+def market_snapshot() -> None:
+    """Live cards with each ticker's last close, daily change and a 3-month sparkline."""
+    prices = c.closes()
+    as_of = prices.index[-1].date()
+    st.markdown(f"#### :primary[:material/show_chart:] Market snapshot :gray[· as of {as_of}]")
+    tickers = list(prices.columns)
+    for row in range(0, len(tickers), 5):
+        cols = st.columns(5)
+        for col, t in zip(cols, tickers[row : row + 5]):
+            s = prices[t].dropna()
+            col.metric(
+                t,
+                f"${s.iloc[-1]:,.2f}",
+                f"{s.iloc[-1] / s.iloc[-2] - 1:+.2%}",
+                border=True,
+                chart_data=s.iloc[-63:].round(2).tolist(),
+                chart_type="area",
+            )
+    st.caption("Daily closes from the local data store. Run quant-fetch to update them.")
+
+
 def render() -> None:
     c.chapter_header(SLUG)
 
@@ -27,6 +48,45 @@ the same Python code as the rest of this project. Nothing is a canned animation:
 you move a slider, the numbers are recomputed.
 """
     )
+
+    cards = [
+        (
+            ":material/school:",
+            "Learn",
+            "13 short chapters, from what a stock is to how ML "
+            "backtests leak. No prior knowledge needed.",
+            c.PAGES.get("markets"),
+            "Begin chapter 1",
+        ),
+        (
+            ":material/science:",
+            "Experiment",
+            "Every chapter has live experiments on real prices: "
+            "move a slider and the numbers are recomputed.",
+            c.PAGES.get("pitfalls"),
+            "See the pitfalls demo",
+        ),
+        (
+            ":material/monitoring:",
+            "Explore",
+            "The Lab puts the whole research stack in one "
+            "dashboard, including a paper-trading account.",
+            c.PAGES.get("lab"),
+            "Open the Lab",
+        ),
+    ]
+    cols = st.columns(3)
+    for col, (icon, title, text, page, link) in zip(cols, cards):
+        with col.container(border=True, height="stretch"):
+            st.markdown(f"### :primary[{icon}] {title}")
+            st.markdown(f":gray[{text}]")
+            if page is not None:
+                st.page_link(
+                    page, label=link, icon=":material/arrow_forward:", icon_position="right"
+                )
+
+    if c.require_data():
+        market_snapshot()
 
     c.section('What is "quant"?')
     st.markdown(
@@ -66,7 +126,7 @@ both roles.
                     x=alt.X("value:Q", title=f"Value on {window.index[-1].date()} ($)"),
                     y=alt.Y("symbol:N", sort="-x", title=None),
                     color=alt.condition(
-                        alt.datum.value >= 1000, alt.value("#2e7d32"), alt.value("#c62828")
+                        alt.datum.value >= 1000, alt.value("#15803D"), alt.value("#B42318")
                     ),
                     tooltip=["symbol", alt.Tooltip("value:Q", format="$,.0f")],
                 )

@@ -19,7 +19,7 @@ from paper_trading.tutorial import (
     ch11_trading,
     ch12_glossary,
 )
-from paper_trading.tutorial.common import CHAPTERS, PAGES, Chapter
+from paper_trading.tutorial.common import CHAPTERS, ICONS, PAGES, Chapter
 
 _CHAPTERS = [
     Chapter(
@@ -138,6 +138,7 @@ def build_pages(default_slug: str = "start") -> list:
         page = st.Page(
             ch.render,
             title=f"{ch.number}. {ch.title}",
+            icon=ICONS.get(ch.slug),
             url_path=ch.slug,
             default=ch.slug == default_slug,
         )

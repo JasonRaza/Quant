@@ -18,11 +18,11 @@ zero, with live experiments on real data.
 
 <table>
   <tr>
-    <td><img src="docs/images/tutorial-backtesting.png" alt="Tutorial: building a moving-average strategy step by step"></td>
+    <td><img src="docs/images/tutorial-start.png" alt="Tutorial home page with a live market snapshot"></td>
     <td><img src="docs/images/lab-portfolio.png" alt="Lab dashboard: walk-forward portfolio comparison"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Tutorial: a trading rule built step by step on real SPY data</sub></td>
+    <td align="center"><sub>Tutorial home: 13 chapters and a live market snapshot</sub></td>
     <td align="center"><sub>Lab: walk-forward comparison of five allocators, net of costs</sub></td>
   </tr>
   <tr>

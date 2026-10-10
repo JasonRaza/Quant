@@ -92,7 +92,7 @@ and the trade happens at today's close. (Chapter 6 shows what goes wrong otherwi
                 alt.Chart(data)
                 .transform_filter("datum.in_market == 1")
                 .transform_calculate(lo=str(lo), hi=str(hi))
-                .mark_rule(opacity=0.15, color="#2e7d32", strokeWidth=3)
+                .mark_rule(opacity=0.15, color="#15803D", strokeWidth=3)
                 .encode(
                     x="date:T",
                     y=alt.Y("lo:Q", scale=alt.Scale(domain=[lo, hi]), title="Price ($)"),
@@ -110,7 +110,7 @@ and the trade happens at today's close. (Chapter 6 shows what goes wrong otherwi
                         "series:N",
                         scale=alt.Scale(
                             domain=["price", "fast", "slow"],
-                            range=["#9e9e9e", "#1565c0", "#ef6c00"],
+                            range=["#9CA3AF", "#0F766E", "#D97706"],
                         ),
                         title=None,
                     ),

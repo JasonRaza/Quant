@@ -113,11 +113,12 @@ def test_fetch_cli_offline(synthetic_market, tmp_path, monkeypatch, capsys):
 
 def test_dashboard_launcher_runs_streamlit(monkeypatch):
     calls = []
-    monkeypatch.setattr(launch.subprocess, "call", lambda cmd: calls.append(cmd) or 0)
+    monkeypatch.setattr(launch.subprocess, "call", lambda cmd, cwd: calls.append((cmd, cwd)) or 0)
     monkeypatch.setattr(sys, "argv", ["quant-dashboard", "--server.port", "9999"])
     with pytest.raises(SystemExit) as exit_info:
         launch.main()
     assert exit_info.value.code == 0
-    cmd = calls[0]
+    cmd, cwd = calls[0]
+    assert (cwd / ".streamlit" / "config.toml").exists()
     assert cmd[1:4] == ["-m", "streamlit", "run"]
     assert cmd[4].endswith("app.py") and cmd[-2:] == ["--server.port", "9999"]
