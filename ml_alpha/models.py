@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable
+from typing import Any, Iterable
 
 import numpy as np
 import pandas as pd
@@ -14,16 +14,16 @@ from sklearn.linear_model import Ridge
 from factors.analysis import ic_summary
 
 
-class SingleFeatureBaseline(BaseEstimator, RegressorMixin):
+class SingleFeatureBaseline(BaseEstimator, RegressorMixin):  # type: ignore[misc]  # untyped
     """Predict with one feature's rank (no fitting). The bar any model must clear."""
 
     def __init__(self, feature: str = "momentum_12_1"):
         self.feature = feature
 
-    def fit(self, X, y=None):
+    def fit(self, X: pd.DataFrame, y: object = None) -> SingleFeatureBaseline:
         return self
 
-    def predict(self, X):
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
         return X[self.feature].to_numpy()
 
 
@@ -46,7 +46,7 @@ def default_models(seed: int = 0) -> dict[str, BaseEstimator]:
 class CVResult:
     predictions: pd.Series
     ic: pd.Series
-    summary: dict
+    summary: dict[str, Any]
     long_short: pd.Series = field(default_factory=pd.Series)
 
 

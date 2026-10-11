@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 
 class MetadataStore:
@@ -72,7 +72,7 @@ class MetadataStore:
             )
             conn.commit()
 
-    def list_symbols(self) -> list[dict]:
+    def list_symbols(self) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT symbol, last_date, last_updated, row_count, last_error FROM symbol_metadata"

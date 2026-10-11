@@ -28,7 +28,9 @@ from shared.config import load_yaml, resolve_path
 logger = logging.getLogger(__name__)
 
 
-def benchmark_equity(store: ParquetStore, symbol: str, index: pd.Index, capital: float):
+def benchmark_equity(
+    store: ParquetStore, symbol: str, index: pd.Index, capital: float
+) -> pd.Series | None:
     df = store.load(symbol)
     if df.empty:
         return None
@@ -47,7 +49,7 @@ def save_equity_chart(curves: dict[str, pd.Series], output_path: Path) -> None:
     fig, ax = plt.subplots(figsize=(10, 5))
     for name, eq in curves.items():
         style = {"linestyle": "--", "color": "gray"} if name.startswith("benchmark") else {}
-        eq.plot(ax=ax, label=name, **style)
+        eq.plot(ax=ax, label=name, **style)  # type: ignore[call-overload]  # stub limitation
     ax.set_title("Walk-forward portfolio equity (monthly rebalance, net of costs)")
     ax.set_xlabel("Date")
     ax.set_ylabel("Equity ($)")

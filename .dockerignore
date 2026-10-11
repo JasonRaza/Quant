@@ -1,0 +1,19 @@
+# Allowlist: send only what the image needs to the build context.
+*
+!pyproject.toml
+!README.md
+!LICENSE
+!shared/
+!data_pipeline/
+!backtester/
+!factors/
+!portfolio/
+!ml_alpha/
+!paper_trading/
+!config/
+!data/snapshot/
+!.streamlit/
+!docker/
+
+**/__pycache__
+**/*.py[cod]

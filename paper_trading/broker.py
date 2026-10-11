@@ -7,7 +7,7 @@ import sqlite3
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import pandas as pd
 
@@ -45,7 +45,7 @@ class Order:
     status: str
     reason: Optional[str] = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -126,7 +126,7 @@ class PaperBroker:
 
     # ---- reads -----------------------------------------------------------------
 
-    def account(self) -> dict:
+    def account(self) -> dict[str, Any]:
         with self._connect() as conn:
             acct = dict(conn.execute("SELECT * FROM account WHERE id = 1").fetchone())
         pos = self.positions()
@@ -225,7 +225,9 @@ class PaperBroker:
             order.price, order.commission, order.status = round(price, 4), commission, "filled"
             return self._record(order, None, conn)
 
-    def rebalance(self, target_weights: dict[str, float], min_trade_value: float = 50.0):
+    def rebalance(
+        self, target_weights: dict[str, float], min_trade_value: float = 50.0
+    ) -> list[Order]:
         """Trade toward target weights of current equity. Sells run first to free cash."""
         if any(w < 0 for w in target_weights.values()):
             raise ValueError("long-only: target weights must be >= 0")
@@ -233,15 +235,16 @@ class PaperBroker:
             raise ValueError("target weights sum to more than 1")
 
         equity = self.account()["equity"]
-        pos = self.positions().set_index("symbol")
-        symbols = set(target_weights) | set(pos.index)
+        pos = self.positions()
+        held_qty = {str(s): int(q) for s, q in zip(pos["symbol"], pos["quantity"])}
+        symbols = set(target_weights) | set(held_qty)
 
         deltas = {}
         for sym in symbols:
             price = self.price_source(sym)
             if not price:
                 continue
-            held = int(pos.loc[sym, "quantity"]) if sym in pos.index else 0
+            held = held_qty.get(sym, 0)
             # Leave room for buy-side slippage and commission so the last buy isn't rejected.
             buffer = 1 + self.slippage_rate + self.commission_rate
             target_qty = math.floor(equity * target_weights.get(sym, 0.0) / (price * buffer))
@@ -253,7 +256,9 @@ class PaperBroker:
         buys = [self.submit_order(s, "buy", d) for s, d in sorted(deltas.items()) if d > 0]
         return sells + buys
 
-    def _record(self, order: Order, reason: Optional[str], conn=None) -> Order:
+    def _record(
+        self, order: Order, reason: Optional[str], conn: Optional[sqlite3.Connection] = None
+    ) -> Order:
         order.reason = reason
         own = conn is None
         conn = conn or self._connect()

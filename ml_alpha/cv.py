@@ -33,7 +33,7 @@ class PurgedWalkForward:
         self, dates: pd.Index, label_end: pd.Series
     ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
         dates = pd.DatetimeIndex(dates)
-        label_end = pd.DatetimeIndex(label_end)
+        ends = pd.DatetimeIndex(label_end)
         unique = dates.unique().sort_values()
         if len(unique) <= self.min_train_dates + self.n_splits:
             raise ValueError("not enough dates for the requested splits")
@@ -42,16 +42,18 @@ class PurgedWalkForward:
         for block in test_blocks:
             test_start, test_end = block[0], block[-1]
             test_idx = np.flatnonzero((dates >= test_start) & (dates <= test_end))
-            train_mask = (dates < test_start) & (label_end < test_start - self.embargo)
+            train_mask = (dates < test_start) & (ends < test_start - self.embargo)
             yield np.flatnonzero(train_mask), test_idx
 
 
-def leaky_kfold(dates: pd.Index, n_splits: int = 5, seed: int = 0):
+def leaky_kfold(
+    dates: pd.Index, n_splits: int = 5, seed: int = 0
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     """Shuffled K-fold ignoring time. Only used to show how much leakage inflates scores."""
     rng = np.random.default_rng(seed)
     unique = pd.DatetimeIndex(dates).unique()
     folds = np.array_split(rng.permutation(len(unique)), n_splits)
-    dates = pd.DatetimeIndex(dates)
+    all_dates = pd.DatetimeIndex(dates)
     for fold in folds:
-        test_mask = dates.isin(unique[fold])
+        test_mask = all_dates.isin(unique[fold])
         yield np.flatnonzero(~test_mask), np.flatnonzero(test_mask)

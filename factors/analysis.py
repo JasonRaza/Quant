@@ -43,7 +43,7 @@ def information_coefficient(
     return pd.Series(values, name="ic", dtype=float)
 
 
-def ic_summary(ic: pd.Series) -> dict:
+def ic_summary(ic: pd.Series) -> dict[str, float]:
     n = int(ic.count())
     if n == 0:
         return {"ic_mean": 0.0, "ic_std": 0.0, "ic_ir": 0.0, "t_stat": 0.0, "hit_rate": 0.0, "n": 0}
@@ -87,14 +87,18 @@ def long_short_spread(qrets: pd.DataFrame) -> pd.Series:
     return (qrets.iloc[:, -1] - qrets.iloc[:, 0]).rename("long_short")
 
 
-def composite_score(factors: dict[str, pd.DataFrame], weights: dict[str, float] | None = None):
+def composite_score(
+    factors: dict[str, pd.DataFrame], weights: dict[str, float] | None = None
+) -> pd.DataFrame:
     """Weighted average of cross-sectional z-scores (equal weight by default)."""
     weights = weights or {name: 1.0 for name in factors}
     total = sum(abs(w) for w in weights.values())
     if total == 0:
         raise ValueError("weights must not all be zero")
-    score = None
+    score: pd.DataFrame | None = None
     for name, w in weights.items():
         z = cross_sectional_zscore(factors[name]) * (w / total)
         score = z if score is None else score.add(z, fill_value=0.0)
+    if score is None:
+        raise ValueError("no factors to combine")
     return score

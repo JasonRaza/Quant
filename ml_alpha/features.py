@@ -9,6 +9,7 @@ market's direction.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -70,7 +71,7 @@ def build_dataset(panel: PricePanel, horizon: int = 21, sample_every: int = 5) -
         {name: f.loc[sample_dates].stack(future_stack=True) for name, f in feats.items()}, axis=1
     )
     stacked.index.names = ["date", "symbol"]
-    y = label.loc[sample_dates].stack(future_stack=True).rename("target")
+    y = cast(pd.Series, label.loc[sample_dates].stack(future_stack=True)).rename("target")
     y.index.names = ["date", "symbol"]
 
     data = stacked.join(y, how="inner").dropna()

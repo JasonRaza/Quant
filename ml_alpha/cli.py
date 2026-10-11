@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -50,7 +51,7 @@ def evaluate_models(
     n_splits: int = 5,
     min_train_dates: int = 52,
     embargo_days: int = 5,
-) -> tuple[dict, dict[str, pd.Series], tuple[pd.Timestamp, pd.Timestamp]]:
+) -> tuple[dict[str, Any], dict[str, pd.Series], tuple[pd.Timestamp, pd.Timestamp]]:
     """Score every default model under purged walk-forward CV and a leaky shuffled K-fold."""
     splitter = PurgedWalkForward(n_splits, min_train_dates, embargo_days)
     purged_splits = list(splitter.split(ds.dates, ds.label_end))

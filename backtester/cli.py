@@ -9,10 +9,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from backtester.engine import BacktestConfig, BacktestEngine
+from backtester.engine import BacktestConfig, BacktestEngine, BacktestResult
 from backtester.strategies import (
     DualMovingAverageCrossover,
     MeanReversionPair,
+    Strategy,
     pair_spread_prices,
 )
 from data_pipeline.storage import ParquetStore
@@ -38,7 +39,7 @@ def load_pair_prices(data_dir: Path, sym_a: str, sym_b: str) -> pd.DataFrame:
     return pair_spread_prices(merged.reset_index(drop=True))
 
 
-def save_equity_chart(result, output_path: Path) -> None:
+def save_equity_chart(result: BacktestResult, output_path: Path) -> None:
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -86,6 +87,7 @@ def main() -> None:
     )
     engine = BacktestEngine(config)
 
+    strategy: Strategy
     if args.strategy == "dual_ma":
         prices = load_prices(data_dir, args.symbol)
         strategy = DualMovingAverageCrossover(fast=args.fast, slow=args.slow)

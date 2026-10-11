@@ -40,7 +40,9 @@ def turnover(trades: pd.DataFrame) -> float:
     return float(trades["trade_value"].abs().sum())
 
 
-def summarize(equity: pd.Series, trades: pd.DataFrame, periods_per_year: int = 252) -> dict:
+def summarize(
+    equity: pd.Series, trades: pd.DataFrame, periods_per_year: int = 252
+) -> dict[str, float]:
     rets = compute_returns(equity)
     total_return = float(equity.iloc[-1] / equity.iloc[0] - 1) if len(equity) > 1 else 0.0
     return {

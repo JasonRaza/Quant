@@ -41,7 +41,10 @@ def refresh_copy(
 ) -> RefreshReport:
     """Sync snapshot files into `target_dir`, then append bars after each last date."""
     if fetch is None:
-        from data_pipeline.fetcher import fetch_symbol_bars as fetch
+        from data_pipeline.fetcher import fetch_symbol_bars
+
+        fetch = fetch_symbol_bars
+    fetch_bars: Fetcher = fetch
 
     target_dir.mkdir(parents=True, exist_ok=True)
     source, store = ParquetStore(source_dir), ParquetStore(target_dir)
@@ -49,7 +52,8 @@ def refresh_copy(
         dst = target_dir / src.name
         # Take the snapshot copy unless the target already has more recent data.
         target_last = _last_date(store, src.stem) if dst.exists() else None
-        if target_last is None or _last_date(source, src.stem) >= target_last:
+        source_last = _last_date(source, src.stem)
+        if target_last is None or (source_last is not None and source_last >= target_last):
             shutil.copy2(src, dst)
 
     today = today or date.today()
@@ -65,7 +69,7 @@ def refresh_copy(
         try:
             # `end` is exclusive: ask for today's bar too, then keep it only once the US
             # session has closed so an intraday price is never stored as a daily close.
-            new_bars = fetch(
+            new_bars = fetch_bars(
                 symbol, start=start, end=today + timedelta(days=1), max_retries=1, retry_delay=0
             )
         except Exception as exc:  # network errors, rate limits, provider changes
@@ -81,8 +85,7 @@ def refresh_copy(
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         list(pool.map(update, store.list_symbols()))
 
-    last_dates = [_last_date(store, s) for s in store.list_symbols()]
-    last_dates = [d for d in last_dates if d is not None]
+    last_dates = [d for s in store.list_symbols() if (d := _last_date(store, s)) is not None]
     report.last_date = max(last_dates) if last_dates else None
     if report.failed:
         logger.warning("Live refresh failed for %s", ", ".join(sorted(report.failed)))

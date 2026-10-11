@@ -6,6 +6,7 @@ import argparse
 import json
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -22,11 +23,11 @@ def _expected_trading_days(start: date, end: date) -> int:
 def generate_quality_report(
     data_dir: str | Path,
     stale_threshold_days: int = 5,
-) -> dict:
+) -> dict[str, Any]:
     store = ParquetStore(data_dir)
     symbols = store.list_symbols()
     today = date.today()
-    report: dict = {"generated_at": today.isoformat(), "symbols": {}, "summary": {}}
+    report: dict[str, Any] = {"generated_at": today.isoformat(), "symbols": {}, "summary": {}}
 
     missing_pct_list = []
     stale_count = 0
