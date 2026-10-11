@@ -1,0 +1,106 @@
+name: Deploy
+
+# Called by CI after every green push to master (staging, then production).
+# Can also be run by hand from the Actions tab to roll back: pick an environment and
+# an older image tag (every image is tagged with the commit SHA it was built from).
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      image:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [staging, production]
+        required: true
+      image:
+        description: "Image to deploy, e.g. ghcr.io/jasonraza/quant:<commit sha>"
+        type: string
+        required: true
+
+permissions:
+  id-token: write # OIDC sign-in to Azure, no stored secret
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.deploy.outputs.dashboard_url }}
+    # Never run two deploys of the same environment at once, and never cancel one midway.
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Sign in to Azure (OIDC)
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Infrastructure and app version are deployed together from infra/main.bicep:
+      # the template is the single source of truth for what runs in Azure.
+      - name: Deploy infrastructure and image
+        id: deploy
+        env:
+          RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          outputs=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "quant-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            --template-file infra/main.bicep \
+            --parameters environmentName="$ENVIRONMENT" image="$IMAGE" \
+            --query properties.outputs --output json)
+          echo "api_url=$(jq -r .apiUrl.value <<<"$outputs")" >> "$GITHUB_OUTPUT"
+          echo "dashboard_url=$(jq -r .dashboardUrl.value <<<"$outputs")" >> "$GITHUB_OUTPUT"
+
+      # Apps scale to zero, so the first request after a deploy waits for a cold start.
+      - name: Wait for the new revision
+        env:
+          API_URL: ${{ steps.deploy.outputs.api_url }}
+          DASHBOARD_URL: ${{ steps.deploy.outputs.dashboard_url }}
+        run: |
+          for url in "$API_URL/health" "$DASHBOARD_URL/_stcore/health"; do
+            for i in $(seq 1 30); do
+              curl --silent --fail --max-time 20 "$url" > /dev/null && echo "up: $url" && break
+              [ "$i" = 30 ] && echo "timed out: $url" && exit 1
+              sleep 10
+            done
+          done
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Smoke tests
+        env:
+          QUANT_SMOKE_URL: ${{ steps.deploy.outputs.api_url }}
+          QUANT_SMOKE_DASHBOARD_URL: ${{ steps.deploy.outputs.dashboard_url }}
+        run: |
+          pip install httpx pytest
+          pytest tests/smoke --noconftest -p no:cacheprovider -v
+
+      - name: Summary
+        env:
+          API_URL: ${{ steps.deploy.outputs.api_url }}
+          DASHBOARD_URL: ${{ steps.deploy.outputs.dashboard_url }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          {
+            echo "### Deployed to ${{ inputs.environment }}"
+            echo "- Image: \`$IMAGE\`"
+            echo "- Quant Lab: $DASHBOARD_URL"
+            echo "- API docs: $API_URL/docs"
+          } >> "$GITHUB_STEP_SUMMARY"

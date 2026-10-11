@@ -123,6 +123,13 @@ make smoke                   # smoke tests against the running containers
 The image runs as a non-root user, has no `pip` at runtime, ships the bundled data
 snapshot, and stores the paper account in a volume (`/app/var`).
 
+### Deployment
+
+Every push to `master` that passes CI is deployed automatically to Azure Container
+Apps, first to staging, then to production after the staging smoke tests pass.
+Infrastructure is defined in Bicep and GitHub signs in to Azure with OIDC (no stored
+secrets). Details, rollback and costs: **[infra/README.md](infra/README.md)**.
+
 ## The web app
 
 `quant-dashboard` opens a Streamlit app with two sections:
@@ -206,6 +213,7 @@ Quant/
 ├── shared/            # config, types, metadata store
 ├── tests/             # 121 tests + smoke/ (post-deploy checks)
 ├── docker/            # container entrypoint and health check
+├── infra/             # Azure infrastructure (Bicep), one-time bootstrap, deploy docs
 ├── docs/              # project details, design notes, learning log, screenshots
 ├── reports/           # generated result files and charts
 └── config/watchlist.yaml
