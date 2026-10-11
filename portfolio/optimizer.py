@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Callable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,12 @@ class Constraints:
         return [(self.min_weight, self.max_weight)] * n
 
 
-def _solve(objective, n: int, constraints: Constraints, extra=()) -> np.ndarray:
+def _solve(
+    objective: Callable[[np.ndarray], float],
+    n: int,
+    constraints: Constraints,
+    extra: Sequence[dict[str, Any]] = (),
+) -> np.ndarray:
     x0 = np.full(n, 1.0 / n)
     cons = [{"type": "eq", "fun": lambda w: w.sum() - 1.0}, *extra]
     res = minimize(
@@ -35,8 +41,9 @@ def _solve(objective, n: int, constraints: Constraints, extra=()) -> np.ndarray:
     )
     if not res.success:
         raise RuntimeError(f"optimizer failed: {res.message}")
-    w = np.clip(res.x, constraints.min_weight, constraints.max_weight)
-    return w / w.sum()
+    w: np.ndarray = np.clip(res.x, constraints.min_weight, constraints.max_weight)
+    weights: np.ndarray = w / w.sum()
+    return weights
 
 
 def equal_weight(cov: pd.DataFrame) -> pd.Series:
@@ -74,9 +81,9 @@ def max_sharpe(
 ) -> pd.Series:
     m, c = mu.reindex(cov.index).to_numpy() - risk_free, cov.to_numpy()
 
-    def neg_sharpe(w):
+    def neg_sharpe(w: np.ndarray) -> float:
         vol = np.sqrt(max(w @ c @ w, 1e-16))
-        return -(m @ w) / vol
+        return float(-(m @ w) / vol)
 
     w = _solve(neg_sharpe, len(c), constraints or Constraints())
     return pd.Series(w, index=cov.index, name="weight")
@@ -87,10 +94,10 @@ def risk_parity(cov: pd.DataFrame, constraints: Constraints | None = None) -> pd
     c = cov.to_numpy()
     n = len(c)
 
-    def objective(w):
+    def objective(w: np.ndarray) -> float:
         port_var = w @ c @ w
         contrib = w * (c @ w) / port_var
-        return np.sum((contrib - 1.0 / n) ** 2)
+        return float(np.sum((contrib - 1.0 / n) ** 2))
 
     w = _solve(objective, n, constraints or Constraints(max_weight=1.0))
     return pd.Series(w, index=cov.index, name="weight")
@@ -102,7 +109,9 @@ def risk_contributions(weights: pd.Series, cov: pd.DataFrame) -> pd.Series:
     return pd.Series(w * (c @ w) / port_var, index=cov.index, name="risk_contribution")
 
 
-def portfolio_stats(weights: pd.Series, mu: pd.Series, cov: pd.DataFrame) -> dict:
+def portfolio_stats(
+    weights: pd.Series, mu: pd.Series, cov: pd.DataFrame
+) -> dict[str, float]:
     w = weights.reindex(cov.index).to_numpy()
     ret = float(mu.reindex(cov.index).to_numpy() @ w)
     vol = float(np.sqrt(w @ cov.to_numpy() @ w))

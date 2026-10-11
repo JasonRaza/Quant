@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -31,12 +32,12 @@ def evaluate_factors(
     close: pd.DataFrame,
     horizon: int,
     n_quantiles: int,
-) -> tuple[dict, dict[str, pd.Series]]:
+) -> tuple[dict[str, Any], dict[str, pd.Series]]:
     fwd = forward_returns(close, horizon)
     dates = rebalance_dates(close.index, horizon)
     periods_per_year = 252 / horizon
 
-    report: dict = {}
+    report: dict[str, Any] = {}
     ic_series: dict[str, pd.Series] = {}
     for name, factor in factors.items():
         ic = information_coefficient(factor, fwd, dates)
@@ -53,7 +54,7 @@ def evaluate_factors(
     return report, ic_series
 
 
-def latest_screen(factors: dict[str, pd.DataFrame]) -> dict:
+def latest_screen(factors: dict[str, pd.DataFrame]) -> dict[str, Any]:
     """Rank symbols on the most recent date with a full composite score."""
     score = composite_score(factors)
     valid = score.dropna(how="all")
@@ -73,7 +74,7 @@ def latest_screen(factors: dict[str, pd.DataFrame]) -> dict:
     return {"as_of": str(dt.date()), "rankings": rankings}
 
 
-def _round(x) -> float | None:
+def _round(x: Any) -> float | None:
     return None if pd.isna(x) else round(float(x), 4)
 
 

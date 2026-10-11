@@ -107,9 +107,21 @@ No network? `python scripts/seed_sample_data.py` writes synthetic prices for a f
 tickers so the tools still run. The test suite never needs network access.
 
 ```bash
-make check      # ruff + full test suite
+make check      # ruff + mypy + full test suite
 make coverage   # tests with a coverage report
 ```
+
+### With Docker
+
+One image runs both services; nothing to install but Docker.
+
+```bash
+docker compose up --build    # API on http://localhost:8000/docs, app on http://localhost:8501
+make smoke                   # smoke tests against the running containers
+```
+
+The image runs as a non-root user, has no `pip` at runtime, ships the bundled data
+snapshot, and stores the paper account in a volume (`/app/var`).
 
 ## The web app
 
@@ -128,8 +140,13 @@ The same paper account is available over REST (`quant-paper-api`, docs at
 
 ## Engineering
 
-- **112 tests, ~95% line coverage**, run on every push by GitHub Actions (Python 3.11
-  and 3.12), plus ruff linting and a pre-commit hook.
+- **121 tests, ~95% line coverage** (the build fails under 90%), run on every push by
+  GitHub Actions (Python 3.11 and 3.12), plus ruff linting and a pre-commit hook.
+- **Strict type checking** (mypy `--strict`) on the research modules and the API.
+- **Container pipeline:** every push builds the Docker image, starts the API and the
+  app, waits for their health checks, runs the smoke tests against the live
+  containers, audits the shipped dependencies (pip-audit) and scans the image
+  (Trivy, pinned by digest). The same smoke tests are meant to run after each deploy.
 - Tests run offline on **synthetic market data**, including end-to-end tests of every
   CLI and render tests of every tutorial chapter and dashboard tab (Streamlit
   `AppTest`).
@@ -187,7 +204,8 @@ Quant/
 ├── ml_alpha/          # 5. features, purged CV, models
 ├── paper_trading/     # 6. broker, API, Streamlit app, tutorial/
 ├── shared/            # config, types, metadata store
-├── tests/             # 112 tests, synthetic-data fixtures
+├── tests/             # 121 tests + smoke/ (post-deploy checks)
+├── docker/            # container entrypoint and health check
 ├── docs/              # project details, design notes, learning log, screenshots
 ├── reports/           # generated result files and charts
 └── config/watchlist.yaml

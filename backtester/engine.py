@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import pandas as pd
 
@@ -22,7 +23,7 @@ class BacktestResult:
     equity: pd.Series
     positions: pd.Series
     trades: pd.DataFrame
-    metrics: dict
+    metrics: dict[str, Any]
     benchmark_equity: pd.Series = field(default_factory=pd.Series)
 
 

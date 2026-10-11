@@ -120,3 +120,23 @@ def test_todays_bar_is_kept_only_after_the_close(snapshot, tmp_path):
     ny = "America/New_York"
     assert not us_session_closed(pd.Timestamp("2024-01-08 15:59", tz=ny))
     assert us_session_closed(pd.Timestamp("2024-01-08 16:30", tz=ny))
+
+
+def test_empty_snapshot_file_keeps_newer_target_data(tmp_path):
+    # An empty snapshot file used to crash the date comparison (None >= date).
+    (tmp_path / "snapshot").mkdir()
+    # Written directly: ParquetStore.save skips empty frames, but a truncated or
+    # hand-made file can still end up empty.
+    bars("AAA", "2024-01-01", 0).to_parquet(tmp_path / "snapshot" / "AAA.parquet", index=False)
+    live = ParquetStore(tmp_path / "live")
+    live.save("AAA", bars("AAA", "2024-01-01", 5))
+
+    report = refresh_copy(
+        tmp_path / "snapshot",
+        tmp_path / "live",
+        fetch=lambda symbol, start, **kwargs: bars(symbol, start, 0),
+        today=date(2024, 1, 31),
+    )
+
+    assert not report.failed
+    assert len(live.load("AAA")) == 5

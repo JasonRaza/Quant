@@ -7,7 +7,7 @@ Sign convention: higher score = more attractive (expected to outperform).
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, cast
 
 import numpy as np
 import pandas as pd
@@ -31,14 +31,15 @@ def short_term_reversal(panel: PricePanel, window: int = 21) -> pd.DataFrame:
 def low_volatility(panel: PricePanel, window: int = 63) -> pd.DataFrame:
     """Negative annualized volatility of daily returns."""
     rets = panel.close.pct_change(fill_method=None)
-    return -(rets.rolling(window, min_periods=window).std() * np.sqrt(252))
+    vol = rets.rolling(window, min_periods=window).std() * np.sqrt(252)
+    return cast(pd.DataFrame, -vol)
 
 
 def liquidity(panel: PricePanel, window: int = 63) -> pd.DataFrame:
     """Log of average daily dollar volume."""
     dollar_vol = panel.close * panel.volume
     avg = dollar_vol.rolling(window, min_periods=window).mean()
-    return np.log(avg.where(avg > 0))
+    return cast(pd.DataFrame, np.log(avg.where(avg > 0)))
 
 
 FACTORS: dict[str, FactorFn] = {

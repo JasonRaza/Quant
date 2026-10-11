@@ -5,8 +5,38 @@ on:
     branches: [master]
   pull_request:
 
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  quality:
+    name: Lint and types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[all]"
+
+      - name: Lint
+        run: ruff check .
+
+      # Strict on the research and API code; Streamlit pages are covered by render tests.
+      - name: Type check
+        run: mypy
+
   test:
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,9 +53,71 @@ jobs:
       - name: Install
         run: pip install -e ".[all]"
 
-      - name: Lint
-        run: ruff check .
-
-      # Tests use synthetic market data, so no network access or API keys are needed.
+      # Synthetic market data: no network or API keys. Fails under 90% coverage
+      # (fail_under in pyproject.toml). Smoke tests skip: no deployment to hit.
       - name: Test
         run: pytest -q --cov --cov-report=term
+
+  docker:
+    name: Docker image
+    needs: quality
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: quant:ci
+      # Pinned by digest: Trivy's release channels were briefly compromised in March 2026
+      # (GHSA-69fq-xp46-6x23), so the scanner itself must be immutable.
+      TRIVY_IMAGE: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: docker build --tag "$IMAGE" .
+
+      - name: Start API and dashboard containers
+        run: |
+          docker run --detach --name api --publish 8000:8000 "$IMAGE"
+          docker run --detach --name dashboard --publish 8501:8501 \
+            --env PORT=8501 --env HEALTH_PATH=/_stcore/health "$IMAGE" dashboard
+
+      - name: Wait until healthy
+        run: |
+          for i in $(seq 1 40); do
+            api=$(docker inspect --format '{{.State.Health.Status}}' api)
+            dash=$(docker inspect --format '{{.State.Health.Status}}' dashboard)
+            echo "api=$api dashboard=$dash"
+            [ "$api" = healthy ] && [ "$dash" = healthy ] && exit 0
+            sleep 3
+          done
+          exit 1
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # The same tests run after every deploy (staging, production).
+      - name: Smoke tests against the containers
+        env:
+          QUANT_SMOKE_URL: http://localhost:8000
+          QUANT_SMOKE_DASHBOARD_URL: http://localhost:8501
+        run: |
+          pip install httpx pytest
+          pytest tests/smoke --noconftest -p no:cacheprovider -v
+
+      - name: Container logs
+        if: failure()
+        run: docker logs api; docker logs dashboard
+
+      # Audit exactly the packages that ship in the image.
+      - name: Audit Python dependencies (pip-audit)
+        run: |
+          docker run --rm --entrypoint python "$IMAGE" -c \
+            "import importlib.metadata as m; print('\n'.join(f'{d.metadata[\"Name\"]}=={d.version}' for d in m.distributions()))" \
+            > shipped-requirements.txt
+          pip install pip-audit
+          pip-audit --requirement shipped-requirements.txt --no-deps --disable-pip
+
+      - name: Scan image (Trivy)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
+            image --quiet --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+            --exit-code 1 "$IMAGE"

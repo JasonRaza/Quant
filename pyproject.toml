@@ -52,6 +52,11 @@ dev = [
     "pytest-cov>=4.1",
     "ruff>=0.1",
     "pre-commit>=3.0",
+    "mypy>=1.10",
+    "pandas-stubs>=2.1",
+    "types-PyYAML>=6.0",
+    "types-requests>=2.31",
+    "pip-audit>=2.7",
 ]
 all = [
     "quant-portfolio[backtest,factors,portfolio,ml,paper,dev]",
@@ -77,6 +82,9 @@ include = ["data_pipeline*", "backtester*", "factors*", "portfolio*", "ml_alpha*
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "smoke: hits a running deployment; needs QUANT_SMOKE_URL (skipped otherwise)",
+]
 
 [tool.coverage.run]
 source = ["data_pipeline", "backtester", "factors", "portfolio", "ml_alpha", "paper_trading", "shared"]
@@ -84,6 +92,22 @@ source = ["data_pipeline", "backtester", "factors", "portfolio", "ml_alpha", "pa
 [tool.coverage.report]
 skip_empty = true
 show_missing = false
+fail_under = 90
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["data_pipeline", "backtester", "factors", "portfolio", "ml_alpha", "paper_trading", "shared"]
+
+# Streamlit UI code: covered by AppTest render tests instead of strict typing.
+[[tool.mypy.overrides]]
+module = ["paper_trading.app", "paper_trading.dashboard", "paper_trading.tutorial.*"]
+ignore_errors = true
+
+# Libraries without type information.
+[[tool.mypy.overrides]]
+module = ["scipy.*", "sklearn.*", "yfinance.*", "pyarrow.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

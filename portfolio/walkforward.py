@@ -8,7 +8,7 @@ weights then drift with prices until the next rebalance.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -40,7 +40,7 @@ class WalkForwardResult:
     equity: pd.Series
     weights: pd.DataFrame
     trades: pd.DataFrame
-    metrics: dict = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 
 def run_walkforward(
@@ -110,13 +110,13 @@ def default_allocators(
     the row at the rebalance date only uses data up to that date.
     """
 
-    def ew(window, dt):
+    def ew(window: pd.DataFrame, dt: pd.Timestamp) -> pd.Series:
         return equal_weight(window.cov())
 
-    def minvar(window, dt):
+    def minvar(window: pd.DataFrame, dt: pd.Timestamp) -> pd.Series:
         return min_variance(ledoit_wolf_covariance(window), constraints)
 
-    def erc(window, dt):
+    def erc(window: pd.DataFrame, dt: pd.Timestamp) -> pd.Series:
         return risk_parity(ledoit_wolf_covariance(window))
 
     allocators: dict[str, Allocator] = {
@@ -127,7 +127,7 @@ def default_allocators(
 
     if scores is not None:
 
-        def factor_mv(window, dt):
+        def factor_mv(window: pd.DataFrame, dt: pd.Timestamp) -> pd.Series:
             cov = ledoit_wolf_covariance(window)
             row = scores.loc[:dt].iloc[-1] if not scores.loc[:dt].empty else pd.Series(dtype=float)
             if row.dropna().empty:
@@ -147,7 +147,7 @@ def historical_max_sharpe(constraints: Constraints) -> Allocator:
     the optimizer concentrates in whatever just went up.
     """
 
-    def allocator(window, dt):
+    def allocator(window: pd.DataFrame, dt: pd.Timestamp) -> pd.Series:
         cov = ledoit_wolf_covariance(window)
         mu = window.mean() * 252
         if (mu <= 0).all():
